@@ -15,6 +15,8 @@ find_package(nlohmann_json CONFIG REQUIRED)
 
 add_executable(sapify-bridge
   src/main.cpp
+  src/config/Config.cpp
+  src/services/ShopifyClient.cpp
 )
 
 target_include_directories(sapify-bridge
@@ -25,3 +27,8 @@ target_compile_options(sapify-bridge
   PRIVATE
     -Wall -Wextra -Wpedantic -Wshadow -Wconversion -Wsign-conversion
     -Wnon-virtual-dtor)
+
+target_link_libraries(sapify-bridge
+  PRIVATE
+    Drogon::Drogon
+    nlohmann_json::nlohmann_json)
