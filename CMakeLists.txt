@@ -11,7 +11,7 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 find_package(Drogon CONFIG REQUIRED)
-find_package(nlohmann_json CONFIG REQUIRED)
+find_package(glaze CONFIG REQUIRED)
 
 add_executable(sapify-bridge
   src/main.cpp
@@ -31,4 +31,4 @@ target_compile_options(sapify-bridge
 target_link_libraries(sapify-bridge
   PRIVATE
     Drogon::Drogon
-    nlohmann_json::nlohmann_json)
+    glaze::glaze)
