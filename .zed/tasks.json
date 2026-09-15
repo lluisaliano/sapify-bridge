@@ -1,5 +1,11 @@
 [
   {
+    "label": "C++: formatear todo",
+    "command": "find src include -type f \\( -name '*.cpp' -o -name '*.hpp' -o -name '*.h' \\) -exec clang-format -i {} +",
+    "cwd": "$ZED_WORKTREE_ROOT",
+    "save": "all"
+  },
+  {
     "label": "CMake: RUN",
     "command": "./build/sapify-bridge",
     "cwd": "$ZED_WORKTREE_ROOT",
@@ -7,25 +13,25 @@
   },
   {
     "label": "CMake: configurar (Debug)",
-    "command": "cmake -S . -B build -DCMAKE_BUILD_TYPE=Debug",
+    "command": "cmake -G Ninja -S . -B build -DCMAKE_BUILD_TYPE=Debug",
     "cwd": "$ZED_WORKTREE_ROOT",
     "save": "all"
   },
   {
     "label": "CMake: compilar (Debug)",
-    "command": "cmake -S . -B build -DCMAKE_BUILD_TYPE=Debug && cmake --build build --parallel",
+    "command": "cmake -G Ninja -S . -B build -DCMAKE_BUILD_TYPE=Debug && cmake --build build --parallel",
     "cwd": "$ZED_WORKTREE_ROOT",
     "save": "all"
   },
   {
     "label": "CMake: compilar y ejecutar (Debug)",
-    "command": "cmake -S . -B build -DCMAKE_BUILD_TYPE=Debug && cmake --build build --parallel && ./build/sapify-bridge",
+    "command": "cmake -G Ninja -S . -B build -DCMAKE_BUILD_TYPE=Debug && cmake --build build --parallel && ./build/sapify-bridge",
     "cwd": "$ZED_WORKTREE_ROOT",
     "save": "all"
   },
   {
     "label": "CMake: recompilar (Debug)",
-    "command": "cmake -S . -B build -DCMAKE_BUILD_TYPE=Debug && cmake --build build --clean-first --parallel",
+    "command": "cmake -G Ninja -S . -B build -DCMAKE_BUILD_TYPE=Debug && cmake --build build --clean-first --parallel",
     "cwd": "$ZED_WORKTREE_ROOT",
     "save": "all"
   },
@@ -36,13 +42,13 @@
   },
   {
     "label": "CMake: compilar (Release)",
-    "command": "cmake -S . -B build/release -DCMAKE_BUILD_TYPE=Release && cmake --build build/release --parallel",
+    "command": "cmake -G Ninja -S . -B build/release -DCMAKE_BUILD_TYPE=Release && cmake --build build/release --parallel",
     "cwd": "$ZED_WORKTREE_ROOT",
     "save": "all"
   },
   {
     "label": "CMake: compilar y ejecutar (Release)",
-    "command": "cmake -S . -B build/release -DCMAKE_BUILD_TYPE=Release && cmake --build build/release --parallel && ./build/release/sapify-bridge",
+    "command": "cmake -G Ninja -S . -B build/release -DCMAKE_BUILD_TYPE=Release && cmake --build build/release --parallel && ./build/release/sapify-bridge",
     "cwd": "$ZED_WORKTREE_ROOT",
     "save": "all"
   }
