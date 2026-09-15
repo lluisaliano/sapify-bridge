@@ -1,7 +1,7 @@
 #pragma once
 
 #include <chrono>
-#include <functional>
+#include <drogon/utils/coroutine.h>
 #include <glaze/core/feature_test.hpp>
 #include <glaze/json.hpp>
 #include <glaze/json/generic_fwd.hpp>
@@ -13,23 +13,13 @@ namespace sapify {
 class ShopifyClient {
 public:
   ShopifyClient(std::string_view shopDomain, std::string_view storeName,
-                 std::string_view clientId, std::string_view clientSecret,
-                 std::string_view apiVersion);
-  glz::generic graphql(const std::string &query, const glz::generic &variables);
+                std::string_view clientId, std::string_view clientSecret,
+                std::string_view apiVersion);
 
-  using TokenSuccessCallback = std::function<void(std::string)>;
-  using ErrorCallback = std::function<void(std::string)>;
+  drogon::Task<glz::generic> graphql(const std::string &query,
+                                     const glz::generic &variables);
 
-  // Compute AccesTOken if needed
-  void ensureAccessToken() {
-    if (hasValidToken()) {
-      return;
-    }
-    getAccessToken();
-  }
-
-  void ensureAccessTokenAsync(TokenSuccessCallback onSuccess,
-                              ErrorCallback onError);
+  drogon::Task<std::string> ensureAccessToken();
 
   // Return accessToken
   std::string_view token() const { return m_accessToken; };
@@ -44,11 +34,8 @@ private:
   std::chrono::steady_clock::time_point m_tokenExpiresAt;
 
 private:
-  // Get access token from shopify
-  void getAccessToken();
   // This function is for testing only
-  void getAccessTokenAsync(TokenSuccessCallback onSuccess,
-                           ErrorCallback onError);
+  drogon::Task<std::string> getAccessToken();
 
   // Check if token exists
   bool hasValidToken() const {

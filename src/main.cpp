@@ -20,10 +20,6 @@ struct HealthResponse {
   std::string_view status;
 };
 
-struct TokenResponse {
-  std::string accessToken;
-};
-
 struct ErrorResponse {
   std::string error;
 };
@@ -39,7 +35,7 @@ int run() {
 
   drogon::app().registerHandler(
       "/health",
-      [](const drogon::HttpRequestPtr &, Callback &&callback) {
+      [](const drogon::HttpRequestPtr&, Callback &&callback) {
         HealthResponse res{"ok"};
 
         std::string resJson;
@@ -59,41 +55,24 @@ int run() {
 
   // Return Token handler
   drogon::app().registerHandler(
-      "/token", [&](const drogon::HttpRequestPtr &, Callback &&callback) {
-        client.ensureAccessTokenAsync(
-            [callback](std::string token) {
-              TokenResponse res{std::move(token)};
-              std::string resJson;
+      "/token",
+      // Config is taken by reference but it lives outside the event loop
+      [&client](drogon::HttpRequestPtr) -> drogon::Task<drogon::HttpResponsePtr> {
+        auto token = co_await client.ensureAccessToken();
 
-              auto response = drogon::HttpResponse::newHttpResponse();
-              if (const auto er = glz::write_json(res, resJson)) {
-                std::println(std::cerr, "Error on serializing token response");
-                response->setStatusCode(drogon::k500InternalServerError);
-                callback(response);
-                return;
-              }
+        // Place token into json
+        glz::generic res{token};
+        std::string resJson;
+        auto response = drogon::HttpResponse::newHttpResponse();
+        if (glz::write_json(res, resJson)) {
+           // Error failed to serialize
+           response->setStatusCode(drogon::HttpStatusCode::k500InternalServerError);
+           co_return response;
+        }
+        response->setContentTypeCode(drogon::CT_APPLICATION_JSON);
+        response->setBody(std::move(resJson));
 
-              response->setContentTypeCode(drogon::CT_APPLICATION_JSON);
-              response->setBody(std::move(resJson));
-              callback(response);
-            },
-            [callback](std::string error) {
-              ErrorResponse res{std::move(error)};
-              std::string resJson;
-
-              auto response = drogon::HttpResponse::newHttpResponse();
-              response->setStatusCode(drogon::k500InternalServerError);
-
-              if (const auto er = glz::write_json(res, resJson)) {
-                std::println(std::cerr, "Error on serializing error response");
-                callback(response);
-                return;
-              }
-
-              response->setContentTypeCode(drogon::CT_APPLICATION_JSON);
-              response->setBody(std::move(resJson));
-              callback(response);
-            });
+        co_return response;
       });
 
   std::println("Starting sapify-bridge on {}:{} with log level {}", config.host,

@@ -3,9 +3,10 @@
 #include <chrono>
 #include <cstdint>
 #include <drogon/HttpClient.h>
-#include <drogon/HttpResponse.h>
 #include <drogon/HttpRequest.h>
+#include <drogon/HttpResponse.h>
 #include <drogon/HttpTypes.h>
+#include <drogon/utils/coroutine.h>
 #include <format>
 #include <glaze/json.hpp>
 #include <glaze/json/write.hpp>
@@ -15,16 +16,16 @@
 namespace sapify {
 
 struct AccessTokenResult {
-      std::string access_token;
-      std::string scope;
-      std::uint32_t expires_in;
-    };
+  std::string access_token;
+  std::string scope;
+  std::uint32_t expires_in;
+};
 
 ShopifyClient::ShopifyClient(std::string_view shopDomain,
-                               std::string_view storeName,
-                               std::string_view clientId,
-                               std::string_view clientSecret,
-                               std::string_view apiVersion)
+                             std::string_view storeName,
+                             std::string_view clientId,
+                             std::string_view clientSecret,
+                             std::string_view apiVersion)
     : m_shopDomain{shopDomain}, m_storeName{storeName}, m_clientId{clientId},
       m_clientSecret{clientSecret}, m_apiVersion{apiVersion} {
   // We have to fetch API to get corresponding accessToken
@@ -32,22 +33,24 @@ ShopifyClient::ShopifyClient(std::string_view shopDomain,
 }
 
 // Send queries to Shopify admin api using graphql
-glz::generic ShopifyClient::graphql(const std::string &query,
-                                     const glz::generic &variables) {
+drogon::Task<glz::generic>
+ShopifyClient::graphql(const std::string &query,
+                       const glz::generic &variables) {
 
-  // Check if token is valid
-  ensureAccessToken();
+  // Check if token is valid, we get it from here as it is cleanr than taking if
+  // from the private member
+  const auto token = co_await ensureAccessToken();
 
   const auto baseUrl{"https://" + m_shopDomain};
   // Get path from .env variable too
   const auto path{"/admin/api/2026-07/graphql.json"};
 
   // Set HTTP client
-  const auto client{drogon::HttpClient::newHttpClient(baseUrl)};
+  auto client{drogon::HttpClient::newHttpClient(baseUrl)};
 
   glz::generic body = {{"query", query}, {"variables", variables}};
   auto payload = glz::write_json(body);
-  if (!payload.has_value()) {
+  if (!payload) {
     throw std::runtime_error("Failed to serialize Shopify request");
   }
 
@@ -56,18 +59,18 @@ glz::generic ShopifyClient::graphql(const std::string &query,
   request->setMethod(drogon::Post);
   request->setPath(path);
   request->setContentTypeCode(drogon::CT_APPLICATION_JSON);
-  request->addHeader("X-Shopify-Access-Token", m_accessToken);
-  // Serialize Json
+  request->addHeader("X-Shopify-Access-Token", token);
+
   request->setBody(std::move(*payload));
 
-  const auto result = client->sendRequest(request);
+  auto result = co_await client->sendRequestCoro(request);
 
-  if (result.first != drogon::ReqResult::Ok || result.second == nullptr) {
+  if (!result) {
     throw std::runtime_error(std::format(
-        "Shopify Graphql request failed for store {}", m_storeName));
+        "Empty Shopify Graphql Response for store {}", m_storeName));
   }
 
-  const auto status = result.second->getStatusCode();
+  const auto status = result->getStatusCode();
 
   if (status < drogon::HttpStatusCode::k200OK ||
       status >= drogon::HttpStatusCode::k300MultipleChoices) {
@@ -76,74 +79,25 @@ glz::generic ShopifyClient::graphql(const std::string &query,
   }
 
   glz::generic response;
-  const std::string_view responseBody{result.second->body()};
+  const std::string_view responseBody{result->body()};
 
   if (glz::read_json(response, responseBody)) {
     throw std::runtime_error("Invalid JSON in Shopify response");
   }
-
-  return response;
+  // Return response
+  co_return response;
 }
 
-void ShopifyClient::getAccessToken() {
-  const auto baseUrl = "https://" + m_shopDomain;
-
-  auto client = drogon::HttpClient::newHttpClient(baseUrl);
-
-  const auto body =
-      std::format("grant_type=client_credentials&client_id={}&client_secret={}",
-                  m_clientId, m_clientSecret);
-
-  auto request = drogon::HttpRequest::newHttpRequest();
-  request->setMethod(drogon::Post);
-  // Path to get access token, may change in the future??
-  request->setPath("/admin/oauth/access_token");
-  request->setContentTypeCode(drogon::CT_APPLICATION_X_FORM);
-  request->setBody(std::move(body));
-
-  auto [reqResult, response] = client->sendRequest(request);
-
-  if (reqResult != drogon::ReqResult::Ok || !response) {
-    throw std::runtime_error("Shopify request on getting token failed");
-  }
-
-  const auto status = response->getStatusCode();
-
-  if (status < drogon::HttpStatusCode::k200OK ||
-      status >= drogon::HttpStatusCode::k300MultipleChoices) {
-    throw std::runtime_error(
-        "Shopify request returned a non2-xxx status, maybe wrong tokens used");
-  }
-
-  const auto responseBody = response->getBody();
-
-  AccessTokenResult res;
-  if (auto err = glz::read_json(res, responseBody)) {
-    throw std::runtime_error("Failed on reading Shopify authentication json");
-  };
-
-  m_accessToken = res.access_token;
-  // We will delete token 5 minutes after expiration
-  m_tokenExpiresAt = std::chrono::steady_clock::now() +
-                     std::chrono::seconds{res.expires_in} -
-                     std::chrono::minutes{5};
-  return;
-}
-
-void ShopifyClient::ensureAccessTokenAsync(TokenSuccessCallback onSuccess,
-                                           ErrorCallback onError) {
+drogon::Task<std::string> ShopifyClient::ensureAccessToken() {
   if (hasValidToken()) {
-    onSuccess(m_accessToken);
-    return;
+    co_return m_accessToken;
   }
-
-  getAccessTokenAsync(std::move(onSuccess), std::move(onError));
+  co_return co_await getAccessToken();
 }
 
-void ShopifyClient::getAccessTokenAsync(TokenSuccessCallback onSuccess,
-                                        ErrorCallback onError) {
-  const auto baseUrl = "https://" + m_shopDomain;
+drogon::Task<std::string> ShopifyClient::getAccessToken() {
 
+  const auto baseUrl = "https://" + m_shopDomain;
   auto client = drogon::HttpClient::newHttpClient(baseUrl);
 
   const auto body =
@@ -156,38 +110,32 @@ void ShopifyClient::getAccessTokenAsync(TokenSuccessCallback onSuccess,
   request->setContentTypeCode(drogon::CT_APPLICATION_X_FORM);
   request->setBody(body);
 
-  client->sendRequest(
-      request,
-      [this, onSuccess = std::move(onSuccess),
-       onError = std::move(onError)](drogon::ReqResult reqResult,
-                                     const drogon::HttpResponsePtr &response) {
-        if (reqResult != drogon::ReqResult::Ok || !response) {
-          onError("Shopify request on getting token failed");
-          return;
-        }
+  auto response = co_await client->sendRequestCoro(request);
 
-        const auto status = response->getStatusCode();
+  if (!response) {
+    throw std::runtime_error("Shopify token request failed");
+  }
 
-        if (status < drogon::HttpStatusCode::k200OK ||
-            status >= drogon::HttpStatusCode::k300MultipleChoices) {
-          onError("Shopify request returned a non2-xxx status, maybe wrong tokens used");
-          return;
-        }
+  auto status = response->getStatusCode();
 
-        const auto responseBody = response->getBody();
+  if (status < drogon::HttpStatusCode::k200OK ||
+      status >= drogon::HttpStatusCode::k300MultipleChoices) {
+    throw std::runtime_error(
+        "Shopify request returned a non2-xxx status, maybe wrong tokens "
+        "used");
+  }
 
-        AccessTokenResult res;
-        if (auto err = glz::read_json(res, responseBody)) {
-          onError("Failed on reading Shopify authentication json");
-          return;
-        }
+  AccessTokenResult res;
 
-        m_accessToken = res.access_token;
-        m_tokenExpiresAt = std::chrono::steady_clock::now() +
-                           std::chrono::seconds{res.expires_in} -
-                           std::chrono::minutes{5};
+  if (glz::read_json(res, response->getBody())) {
+    throw std::runtime_error("Invalid Shopify token to JSON");
+  }
 
-        onSuccess(m_accessToken);
-      });
-}
+  m_accessToken = res.access_token;
+  m_tokenExpiresAt = std::chrono::steady_clock::now() +
+                     std::chrono::seconds{res.expires_in} -
+                     std::chrono::minutes{5};
+
+  co_return m_accessToken;
+};
 } // namespace sapify
