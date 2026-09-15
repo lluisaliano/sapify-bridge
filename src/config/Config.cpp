@@ -3,6 +3,7 @@
 #include <cstdlib>
 #include <fstream>
 #include <limits>
+#include <memory>
 #include <stdexcept>
 #include <string>
 
@@ -75,17 +76,17 @@ void loadDotEnv(const std::string &envPath) {
 } // namespace
 
 // Get environment variables to create the config object
-Config Config::fromEnv() {
+std::shared_ptr<const Config> Config::fromEnv() {
   // We will load .env if it exists, which will only exist in dev environments
   loadDotEnv(".env");
-  return {.host = getEnv("APP_HOST", "0.0.0.0"),
+  return std::make_shared<const Config>(Config{.host = getEnv("APP_HOST", "0.0.0.0"),
           .port = parsePort(getEnv("APP_PORT", "8080")),
           .logLevel = getEnv("LOG_LEVEL", "info"),
           .mascaroDomain = getEnv("SHOPIFY_MASCARO_DOMAIN", ""),
           .mascaroClientId = getEnv("SHOPIFY_MASCARO_CLIENT_ID", ""),
           .mascaroClientSecret = getEnv("SHOPIFY_MASCARO_CLIENT_SECRET", ""),
           .shopifyApiVersion = getEnv("SHOPIFY_API_VERSION", "2026-07"),
-          .apiSAP = getEnv("APISAP", "apisap:3000")};
+          .apiSAP = getEnv("APISAP", "apisap:3000")});
 }
 
 } // namespace sapify

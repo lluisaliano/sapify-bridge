@@ -1,7 +1,9 @@
 #include "config/Config.hpp"
+#include "controllers/PushController.hpp"
 #include "services/ShopifyClient.hpp"
 
 #include <drogon/HttpAppFramework.h>
+#include <drogon/HttpController.h>
 #include <drogon/HttpRequest.h>
 #include <drogon/HttpResponse.h>
 #include <drogon/HttpTypes.h>
@@ -9,6 +11,7 @@
 #include <exception>
 #include <functional>
 #include <glaze/json/write.hpp>
+#include <memory>
 #include <print>
 #include <string>
 #include <string_view>
@@ -30,8 +33,12 @@ int run() {
   const auto config = sapify::Config::fromEnv();
 
   // Create shopify client
-  ShopifyClient client{config.mascaroDomain, "pretty", config.mascaroClientId,
-                       config.mascaroClientSecret, config.shopifyApiVersion};
+  auto client = std::make_shared<ShopifyClient>(config->mascaroDomain, "pretty", config->mascaroClientId,
+                       config->mascaroClientSecret, config->shopifyApiVersion);
+
+  // Push Controller (push information to sap) registration
+  auto pushController = std::make_shared<PushController>(config, client);
+  drogon::app().registerController(pushController);
 
   drogon::app().registerHandler(
       "/health",
@@ -58,7 +65,7 @@ int run() {
       "/token",
       // Config is taken by reference but it lives outside the event loop
       [&client](drogon::HttpRequestPtr) -> drogon::Task<drogon::HttpResponsePtr> {
-        auto token = co_await client.ensureAccessToken();
+        auto token = co_await client->ensureAccessToken();
 
         // Place token into json
         glz::generic res{token};
@@ -75,12 +82,12 @@ int run() {
         co_return response;
       });
 
-  std::println("Starting sapify-bridge on {}:{} with log level {}", config.host,
-               config.port, config.logLevel);
+  std::println("Starting sapify-bridge on {}:{} with log level {}", config->host,
+               config->port, config->logLevel);
 
   // Start drogon server, configur static files route
   drogon::app()
-      .addListener(config.host, config.port)
+      .addListener(config->host, config->port)
       .setDocumentRoot("./static")
       .run();
 
