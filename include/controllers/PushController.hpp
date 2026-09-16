@@ -16,31 +16,32 @@ namespace sapify {
 // shopifyclient and the config values struct
 // We use move to avoid one extra copy
 class PushController : public drogon::HttpController<PushController, false> {
-public:
-  PushController(std::shared_ptr<const Config> config, std::shared_ptr<ShopifyClient> client)
-      : m_config{std::move(config)}, m_client{std::move(client)} {};
+  public:
+    PushController(std::shared_ptr<const Config> config,
+                   std::shared_ptr<ShopifyClient> client)
+        : m_config{std::move(config)}, m_client{std::move(client)} {};
 
-  METHOD_LIST_BEGIN
+    METHOD_LIST_BEGIN
 
-  // Push items
-  ADD_METHOD_TO(PushController::pushItems, "/upload/items", drogon::Post);
+    // Push items
+    ADD_METHOD_TO(PushController::pushItems, "/upload/items", drogon::Post);
 
-  // Push prices
-  ADD_METHOD_TO(PushController::pushPrices, "/upload/prices", drogon::Post);
+    // Push prices
+    ADD_METHOD_TO(PushController::pushPrices, "/upload/prices", drogon::Post);
 
-  // Push stock
-  ADD_METHOD_TO(PushController::pushStock, "/uploaad/stocks", drogon::Post);
+    // Push stock
+    ADD_METHOD_TO(PushController::pushStock, "/uploaad/stocks", drogon::Post);
 
-  METHOD_LIST_END
+    METHOD_LIST_END
 
-  drogon::Task<drogon::HttpResponsePtr> pushItems(drogon::HttpRequestPtr);
+    drogon::Task<drogon::HttpResponsePtr> pushItems(drogon::HttpRequestPtr);
 
-  drogon::Task<drogon::HttpResponsePtr> pushPrices(drogon::HttpRequestPtr);
+    drogon::Task<drogon::HttpResponsePtr> pushPrices(drogon::HttpRequestPtr);
 
-  drogon::Task<drogon::HttpResponsePtr> pushStock(drogon::HttpRequestPtr);
+    drogon::Task<drogon::HttpResponsePtr> pushStock(drogon::HttpRequestPtr);
 
-private:
-  std::shared_ptr<const Config> m_config;
-  std::shared_ptr<ShopifyClient> m_client;
+  private:
+    std::shared_ptr<const Config> m_config;
+    std::shared_ptr<ShopifyClient> m_client;
 };
 } // namespace sapify

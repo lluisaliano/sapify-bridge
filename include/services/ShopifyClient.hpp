@@ -11,36 +11,36 @@
 namespace sapify {
 
 class ShopifyClient {
-public:
-  ShopifyClient(std::string_view shopDomain, std::string_view storeName,
-                std::string_view clientId, std::string_view clientSecret,
-                std::string_view apiVersion);
+  public:
+    ShopifyClient(std::string_view shopDomain, std::string_view storeName,
+                  std::string_view clientId, std::string_view clientSecret,
+                  std::string_view apiVersion);
 
-  drogon::Task<glz::generic> graphql(const std::string &query,
-                                     const glz::generic &variables);
+    drogon::Task<std::pair<glz::generic, std::string>>
+    graphql(const std::string_view query, const glz::generic &variables);
 
-  drogon::Task<std::string> ensureAccessToken();
+    drogon::Task<std::string> ensureAccessToken();
 
-  // Return accessToken
-  std::string_view token() const { return m_accessToken; };
+    // Return accessToken
+    std::string_view token() const { return m_accessToken; };
 
-private:
-  std::string m_shopDomain{};
-  std::string m_storeName{};
-  std::string m_clientId{};
-  std::string m_clientSecret{};
-  std::string m_apiVersion{};
-  std::string m_accessToken{};
-  std::chrono::steady_clock::time_point m_tokenExpiresAt;
+  private:
+    std::string m_shopDomain{};
+    std::string m_storeName{};
+    std::string m_clientId{};
+    std::string m_clientSecret{};
+    std::string m_apiVersion{};
+    std::string m_accessToken{};
+    std::chrono::steady_clock::time_point m_tokenExpiresAt;
 
-private:
-  // This function is for testing only
-  drogon::Task<std::string> getAccessToken();
+  private:
+    // This function is for testing only
+    drogon::Task<std::string> getAccessToken();
 
-  // Check if token exists
-  bool hasValidToken() const {
-    return !m_accessToken.empty() &&
-           std::chrono::steady_clock::now() < m_tokenExpiresAt;
-  }
+    // Check if token exists
+    bool hasValidToken() const {
+        return !m_accessToken.empty() &&
+               std::chrono::steady_clock::now() < m_tokenExpiresAt;
+    }
 };
 } // namespace sapify
