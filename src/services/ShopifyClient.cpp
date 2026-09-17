@@ -12,6 +12,7 @@
 #include <glaze/json/write.hpp>
 #include <stdexcept>
 #include <string_view>
+#include <print>
 
 namespace sapify {
 
@@ -49,8 +50,8 @@ ShopifyClient::graphql(const std::string_view query,
     auto client{drogon::HttpClient::newHttpClient(baseUrl)};
 
     glz::generic body = {{"query", query}, {"variables", variables}};
-    auto payload = glz::write_json(body);
-    if (!payload) {
+    std::string bodyJson;
+    if (glz::write_json(body, bodyJson)) {
         throw std::runtime_error("Failed to serialize Shopify request");
     }
 
@@ -61,7 +62,7 @@ ShopifyClient::graphql(const std::string_view query,
     request->setContentTypeCode(drogon::CT_APPLICATION_JSON);
     request->addHeader("X-Shopify-Access-Token", token);
 
-    request->setBody(std::move(*payload));
+    request->setBody(std::move(bodyJson));
 
     auto result = co_await client->sendRequestCoro(request);
 
@@ -88,8 +89,8 @@ ShopifyClient::graphql(const std::string_view query,
     if (glz::read_json(response, responseJson)) {
         throw std::runtime_error("Invalid JSON in Shopify response");
     }
-    // Return response and responseJson to avoid serializing again
-    co_return std::pair{response, responseJson};
+    // Return response and responseJson to avoid serializing again. Use move to construct the pair
+    co_return std::pair{std::move(response), std::move(responseJson)};
 }
 
 drogon::Task<std::string> ShopifyClient::ensureAccessToken() {
@@ -130,6 +131,13 @@ drogon::Task<std::string> ShopifyClient::getAccessToken() {
     }
 
     AccessTokenResult res;
+
+    const auto currTime = std::chrono::system_clock::now();
+    const auto localTime = std::chrono::zoned_time {
+        "Europe/Madrid", currTime
+    };
+
+    std::println("{} INFO: Requested token for store {}",localTime, m_storeName);
 
     if (glz::read_json(res, response->getBody())) {
         throw std::runtime_error("Invalid Shopify token to JSON");

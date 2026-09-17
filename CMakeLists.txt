@@ -16,6 +16,7 @@ find_package(glaze CONFIG REQUIRED)
 add_executable(sapify-bridge
   src/main.cpp
   src/config/Config.cpp
+  src/controllers/PushController.cpp
   src/services/ShopifyClient.cpp
 )
 

@@ -6,6 +6,7 @@
 #include <drogon/HttpResponse.h>
 #include <drogon/HttpTypes.h>
 #include <drogon/utils/coroutine.h>
+#include <glaze/json/lazy.hpp>
 #include <stdexcept>
 #include <string>
 
@@ -13,7 +14,13 @@ namespace sapify {
 drogon::Task<drogon::HttpResponsePtr>
 PushController::pushItems(drogon::HttpRequestPtr req) {
 
-    // Receive items to upload from SuperTCModel
+    // Receive items to upload from SuperTCModel. We need to create a string as we only get a string_view from req-body()
+    // This recieves a JSON with property articulos wich has an array of strings of articulos
+    /*
+     * {
+     * articulos: ["1231_001",...]
+     * }
+     */
     const auto reqBody = std::string{req->body()};
 
     // Fetch API for shopify cab and det data
@@ -24,6 +31,7 @@ PushController::pushItems(drogon::HttpRequestPtr req) {
     auto requestCab = drogon::HttpRequest::newHttpRequest();
     requestCab->setMethod(drogon::Post);
     requestCab->setPath("/shopify/cab"); // API endpoint to get cab items
+    requestCab->setContentTypeCode(drogon::ContentType::CT_APPLICATION_JSON);
     requestCab->setBody(
         reqBody); // Send body asking only for corresponding items
 
@@ -31,6 +39,7 @@ PushController::pushItems(drogon::HttpRequestPtr req) {
     auto requestDet = drogon::HttpRequest::newHttpRequest();
     requestDet->setMethod(drogon::Post);
     requestDet->setPath("/shopify/det"); // API endpoint to get cab items
+    requestDet->setContentTypeCode(drogon::ContentType::CT_APPLICATION_JSON);
     requestDet->setBody(
         reqBody); // Send body asking only for corresponding items
 
@@ -49,13 +58,13 @@ PushController::pushItems(drogon::HttpRequestPtr req) {
     // Parse data into vectors
     ItemsCab cab;
     ItemsDet det;
-    if (glz::write_json(cab, responseCab->getBody()) ||
-        glz::write_json(det, responseDet->getBody())) {
+    if (glz::read_json(cab, responseCab->getBody()) ||
+        glz::read_json(det, responseDet->getBody())) {
         throw std::runtime_error{
             "Error while parsing APISAP Cab and Det Jsons"};
     }
 
-    // TESTING CHANGING PRODUCT NAME
+    // TESTING CHANGING PRODUCT NAME ONLY FROM SHOPIFY
     // String! means that it is mandatory
     std::string_view GetProductsByArticleQuery =
         R"(query GetProductsByArticle($productType: String!) {
@@ -67,18 +76,18 @@ PushController::pushItems(drogon::HttpRequestPtr req) {
           }
         }
       })";
-    // SELECT RANDOM ITEM, THIS WILL COME FROM THE LIST
-    glz::generic variables{"productType", "53212_001"};
+    // SELECT RANDOM ITEM, THIS WILL COME FROM THE LIST, We need to keys as we create an array otherwise
+    glz::generic variables{{"productType", "53212_001"}};
 
+    // This may get copy ellision with lucky!
     auto [shopyRes, shopiResJson] =
         co_await m_client->graphql(GetProductsByArticleQuery, variables);
 
     auto response = drogon::HttpResponse::newHttpResponse();
     response->setContentTypeCode(drogon::ContentType::CT_APPLICATION_JSON);
-
     response->setBody(std::move(shopiResJson));
 
-    co_return responseBody;
+    co_return response;
 
     // build shopify query "bulkOperationRunMutation"
     // "productVariantsBulkCreate" send return response
