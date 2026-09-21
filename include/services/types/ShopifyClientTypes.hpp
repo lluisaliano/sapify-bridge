@@ -46,4 +46,4 @@ struct FetchProductDataResponse {
     };
     Data data{};
 };
-}
+} // namespace sapify

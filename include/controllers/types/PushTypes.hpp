@@ -52,7 +52,7 @@ using ItemsDet = std::vector<ItemDet>;
 struct UploadItemVariables {
     // --- Metafield ---
     struct Metafield {
-        std::string ns;     // mapeado a "namespace"
+        std::string ns; // mapeado a "namespace"
         std::string key;
         std::string value;
         std::string type;
@@ -60,12 +60,15 @@ struct UploadItemVariables {
 
     // --- Media (imagen/video/etc.) ---
     struct File {
-        std::optional<std::string> id;        // solo si ya existe y quieres renombrar/reemplazar por id
+        std::optional<std::string>
+            id; // solo si ya existe y quieres renombrar/reemplazar por id
         std::string filename;
         std::string originalSource;
         std::string alt;
-        std::string contentType;              // "IMAGE" | "VIDEO" | "EXTERNAL_VIDEO" | "MODEL_3D" | "FILE"
-        std::string duplicateResolutionMode;  // "REPLACE" | "APPEND_UUID" | "RAISE_ERROR"
+        std::string contentType; // "IMAGE" | "VIDEO" | "EXTERNAL_VIDEO" |
+                                 // "MODEL_3D" | "FILE"
+        std::string duplicateResolutionMode; // "REPLACE" | "APPEND_UUID" |
+                                             // "RAISE_ERROR"
     };
 
     // --- Variantes (Solo hay un tipo: Talla del Calzado) ---
@@ -77,7 +80,8 @@ struct UploadItemVariables {
     };
 
     // Aqui se define el tipo de la variante. Solo hay uno, el por defecto
-    static constexpr std::string_view DEFAULT_PRODUCT_OPTIONS = "Talla del Calzado";
+    static constexpr std::string_view DEFAULT_PRODUCT_OPTIONS =
+        "Talla del Calzado";
     struct ProductOption {
         std::string name; // Talla del Calzado
         std::vector<OptionValue> values;
@@ -86,7 +90,7 @@ struct UploadItemVariables {
     // --- Aqui definimos para que variante son los valores ---
     struct VariantOptionValue {
         std::string optionName; // Talla del Calzado
-        std::string name; // 37
+        std::string name;       // 37
     };
 
     // --- Definimos valores de variante
@@ -105,20 +109,19 @@ struct UploadItemVariables {
     };
 
     // Product status
-    enum class ProductStatus {
-        ACTIVE,
-        DRAFT,
-        ARCHIVED
-    };
+    enum class ProductStatus { ACTIVE, DRAFT, ARCHIVED };
 
     // --- Valores del producto ---
-    std::string title; // Titulo
+    std::string title;       // Titulo
     std::string productType; // Codigo ITEM
-    std::string vendor; // Mascaro y Pretty
-    std::string descriptionHtml; // Descripcion con etiquetas html, strong, em...
+    std::string vendor;      // Mascaro y Pretty
+    std::string
+        descriptionHtml;  // Descripcion con etiquetas html, strong, em...
     ProductStatus status; // ACTIVE, DRAFT, UNLISTED
-    std::optional<std::string> handle; // URL Handle, si no se pasa se usa el titulo en minusculas
-    std::optional<bool> redirectNewHandle;   // true = redirige automáticamente el handle viejo al nuevo
+    std::optional<std::string>
+        handle; // URL Handle, si no se pasa se usa el titulo en minusculas
+    std::optional<bool> redirectNewHandle; // true = redirige automáticamente el
+                                           // handle viejo al nuevo
     Seo seo;
     std::vector<Metafield> metafields;
     std::vector<File> files;
@@ -135,7 +138,8 @@ struct ProductSetIdentifier {
 // --- Struct exterior: lo que realmente se serializa como "variables" ---
 struct UploadItemsSetVariables {
     bool synchronous; // Hacer que shopify espere a subir el item para responder
-    std::optional<ProductSetIdentifier> identifier;  // Si el item no existe, se pasara con std::nullopt
+    std::optional<ProductSetIdentifier>
+        identifier; // Si el item no existe, se pasara con std::nullopt
     UploadItemVariables input; // Item
 };
 
@@ -143,24 +147,16 @@ struct UploadItemsSetVariables {
 
 // --- Tell Glaze how to deserialize things
 // Deserialize Metafield ns to namespace, as namespace is a reserved keyword
-template <>
-struct glz::meta<sapify::UploadItemVariables::Metafield> {
+template <> struct glz::meta<sapify::UploadItemVariables::Metafield> {
     using T = sapify::UploadItemVariables::Metafield;
-    static constexpr auto value = glz::object(
-        "namespace", &T::ns,
-        "key", &T::key,
-        "value", &T::value,
-        "type", &T::type
-    );
+    static constexpr auto value =
+        glz::object("namespace", &T::ns, "key", &T::key, "value", &T::value,
+                    "type", &T::type);
 };
 
 // Deserialize enum to string
-template <>
-struct glz::meta<sapify::UploadItemVariables::ProductStatus> {
+template <> struct glz::meta<sapify::UploadItemVariables::ProductStatus> {
     using enum sapify::UploadItemVariables::ProductStatus;
-    static constexpr auto value = glz::enumerate(
-        "ACTIVE", ACTIVE,
-        "DRAFT", DRAFT,
-        "ARCHIVED", ARCHIVED
-    );
+    static constexpr auto value =
+        glz::enumerate("ACTIVE", ACTIVE, "DRAFT", DRAFT, "ARCHIVED", ARCHIVED);
 };

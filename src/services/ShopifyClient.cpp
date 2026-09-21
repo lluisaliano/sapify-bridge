@@ -103,7 +103,9 @@ ShopifyClient::graphql(const std::string_view query,
  */
 drogon::Task<FetchProductDataResponse>
 ShopifyClient::fetchProductData(const std::string_view product) {
-    auto [res, resJson] = co_await graphql<FetchProductDataResponse>(articleSearchQuery, {{"searchQuery", std::format("product_type:'{}'", product)}});
+    auto [res, resJson] = co_await graphql<FetchProductDataResponse>(
+        articleSearchQuery,
+        {{"searchQuery", std::format("product_type:'{}'", product)}});
     co_return res;
 }
 

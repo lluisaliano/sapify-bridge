@@ -27,10 +27,12 @@ class PushController : public drogon::HttpController<PushController, false> {
     ADD_METHOD_TO(PushController::pushItems, "/upload/items", drogon::Post);
 
     // // Push prices
-    // ADD_METHOD_TO(PushController::pushPrices, "/upload/prices", drogon::Post);
+    // ADD_METHOD_TO(PushController::pushPrices, "/upload/prices",
+    // drogon::Post);
 
     // // Push stock
-    // ADD_METHOD_TO(PushController::pushStock, "/uploaad/stocks", drogon::Post);
+    // ADD_METHOD_TO(PushController::pushStock, "/uploaad/stocks",
+    // drogon::Post);
 
     METHOD_LIST_END
 

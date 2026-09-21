@@ -7,7 +7,6 @@
 #include <drogon/HttpResponse.h>
 #include <drogon/HttpTypes.h>
 #include <drogon/utils/coroutine.h>
-#include <expected>
 #include <glaze/json/lazy.hpp>
 #include <optional>
 #include <stdexcept>
@@ -121,12 +120,13 @@ PushController::pushItems(drogon::HttpRequestPtr req) {
 
         // For each talla, create a variant, called productOption on shopify
         // ---------------- IMPORTANT: We need to clean tallas
-        for (auto& d : itemDet) {
+        for (auto &d : itemDet) {
             tallas::normalizeTalla(d.TALLA);
         }
         UploadItemVariables::ProductOption
 
-        inputValues.productOptions.push_back({.name = UploadItemVariables::DEFAULT_PRODUCT_OPTIONS})
+            inputValues.productOptions.push_back(
+                {.name = UploadItemVariables::DEFAULT_PRODUCT_OPTIONS})
     }
 
     // FALTARA SUBIR IDIOMAS

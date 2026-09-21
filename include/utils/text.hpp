@@ -4,10 +4,10 @@
 #include <cctype>
 #include <charconv>
 #include <format>
+#include <ranges>
 #include <string>
 #include <string_view>
 #include <unordered_map>
-#include <ranges>
 
 namespace sapify {
 namespace text {
@@ -71,15 +71,19 @@ inline std::string handleUTF(std::string_view string) {
     return out;
 }
 
-inline void trim(std::string& string) {
+inline void trim(std::string &string) {
     // Define function to check if char is a space
-    auto isSpace = [](unsigned char c){return std::isspace(c);};
+    auto isSpace = [](unsigned char c) { return std::isspace(c); };
 
     string.erase(string.begin(), std::ranges::find_if_not(string, isSpace));
-    // find if not searches the string backwards using string | std::views::reverse. It find the first character which is not a space.
-    // .base() returns an non reversed iterator to one character forward this one
-    // "hola   " find if not returns iterator to a. But it is reversed. .base returns an iterator to a + 1 which is not reversed
-    string.erase(std::ranges::find_if_not(string | std::views::reverse, isSpace).base(), string.end());
+    // find if not searches the string backwards using string |
+    // std::views::reverse. It find the first character which is not a space.
+    // .base() returns an non reversed iterator to one character forward this
+    // one "hola   " find if not returns iterator to a. But it is reversed.
+    // .base returns an iterator to a + 1 which is not reversed
+    string.erase(
+        std::ranges::find_if_not(string | std::views::reverse, isSpace).base(),
+        string.end());
 }
 
 inline std::string handleText(std::string_view string) {
@@ -97,7 +101,7 @@ inline std::string handleText(std::string_view string) {
             // If it is a space
         } else {
             // Add the hyphen
-           handle += '-';
+            handle += '-';
         }
     }
 
@@ -128,5 +132,5 @@ inline std::string normalizeTalla(std::string_view talla) {
         return std::string{talla};
     }
 }
-}
+} // namespace tallas
 } // namespace sapify
