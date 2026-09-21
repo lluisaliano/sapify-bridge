@@ -1,5 +1,6 @@
 #pragma once
 
+#include "services/types/ShopifyClientTypes.hpp"
 #include <chrono>
 #include <drogon/utils/coroutine.h>
 #include <glaze/core/feature_test.hpp>
@@ -16,10 +17,18 @@ class ShopifyClient {
                   std::string_view clientId, std::string_view clientSecret,
                   std::string_view apiVersion);
 
-    drogon::Task<std::pair<glz::generic, std::string>>
+    // ------------ This will go private
+    // Ensure accesToken exists
+    drogon::Task<std::string> ensureAccessToken();
+
+    // Launch a graphql query to shopify
+    template <typename ResponseFormat = glz::generic>
+    drogon::Task<std::pair<ResponseFormat, std::string>>
     graphql(const std::string_view query, const glz::generic &variables);
 
-    drogon::Task<std::string> ensureAccessToken();
+    // Fetch Product Data
+    drogon::Task<FetchProductDataResponse>
+    fetchProductData(const std::string_view product);
 
     // Return accessToken
     std::string_view token() const { return m_accessToken; };

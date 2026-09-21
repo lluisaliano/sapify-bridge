@@ -1,4 +1,6 @@
 #include "services/ShopifyClient.hpp"
+#include "services/types/Queryies.hpp"
+#include "services/types/ShopifyClientTypes.hpp"
 
 #include <chrono>
 #include <cstdint>
@@ -10,9 +12,10 @@
 #include <format>
 #include <glaze/json.hpp>
 #include <glaze/json/write.hpp>
-#include <stdexcept>
-#include <string_view>
 #include <print>
+#include <stdexcept>
+#include <string>
+#include <string_view>
 
 namespace sapify {
 
@@ -34,7 +37,8 @@ ShopifyClient::ShopifyClient(std::string_view shopDomain,
 }
 
 // Send queries to Shopify admin api using graphql
-drogon::Task<std::pair<glz::generic, std::string>>
+template <typename ResponseFormat>
+drogon::Task<std::pair<ResponseFormat, std::string>>
 ShopifyClient::graphql(const std::string_view query,
                        const glz::generic &variables) {
 
@@ -80,7 +84,7 @@ ShopifyClient::graphql(const std::string_view query,
                         m_storeName));
     }
 
-    glz::generic response;
+    ResponseFormat response;
     // Copy JSON Body. We have to construct a string here to return the json
     // without its lifetime ending. The compiler may optimize NRVO
     const std::string responseJson{result->body()};
@@ -89,8 +93,18 @@ ShopifyClient::graphql(const std::string_view query,
     if (glz::read_json(response, responseJson)) {
         throw std::runtime_error("Invalid JSON in Shopify response");
     }
-    // Return response and responseJson to avoid serializing again. Use move to construct the pair
+    // Return response and responseJson to avoid serializing again. Use move to
+    // construct the pair
     co_return std::pair{std::move(response), std::move(responseJson)};
+}
+
+/* Fetch Product Data
+ * @param Product Reference: "124412_001"
+ */
+drogon::Task<FetchProductDataResponse>
+ShopifyClient::fetchProductData(const std::string_view product) {
+    auto [res, resJson] = co_await graphql<FetchProductDataResponse>(articleSearchQuery, {{"searchQuery", std::format("product_type:'{}'", product)}});
+    co_return res;
 }
 
 drogon::Task<std::string> ShopifyClient::ensureAccessToken() {
@@ -133,11 +147,10 @@ drogon::Task<std::string> ShopifyClient::getAccessToken() {
     AccessTokenResult res;
 
     const auto currTime = std::chrono::system_clock::now();
-    const auto localTime = std::chrono::zoned_time {
-        "Europe/Madrid", currTime
-    };
+    const auto localTime = std::chrono::zoned_time{"Europe/Madrid", currTime};
 
-    std::println("{} INFO: Requested token for store {}",localTime, m_storeName);
+    std::println("{} INFO: Requested token for store {}", localTime,
+                 m_storeName);
 
     if (glz::read_json(res, response->getBody())) {
         throw std::runtime_error("Invalid Shopify token to JSON");
