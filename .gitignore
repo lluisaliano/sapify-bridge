@@ -2,3 +2,5 @@ build/
 .cache/
 REMEMBER.txt
 .env
+node_modules
+package.json
