@@ -11,6 +11,7 @@
 #include <drogon/utils/coroutine.h>
 #include <format>
 #include <glaze/json.hpp>
+#include <glaze/json/generic_fwd.hpp>
 #include <glaze/json/write.hpp>
 #include <print>
 #include <stdexcept>
@@ -36,76 +37,17 @@ ShopifyClient::ShopifyClient(std::string_view shopDomain,
     // Vary this when adding Pretty
 }
 
-// Send queries to Shopify admin api using graphql
-template <typename ResponseFormat>
-drogon::Task<std::pair<ResponseFormat, std::string>>
-ShopifyClient::graphql(const std::string_view query,
-                       const glz::generic &variables) {
-
-    // Check if token is valid, we get it from here as it is cleanr than taking
-    // if from the private member
-    const auto token = co_await ensureAccessToken();
-
-    const auto baseUrl{"https://" + m_shopDomain};
-    // Get path from .env variable too
-    const auto path{"/admin/api/2026-07/graphql.json"};
-
-    // Set HTTP client
-    auto client{drogon::HttpClient::newHttpClient(baseUrl)};
-
-    glz::generic body = {{"query", query}, {"variables", variables}};
-    std::string bodyJson;
-    if (glz::write_json(body, bodyJson)) {
-        throw std::runtime_error("Failed to serialize Shopify request");
-    }
-
-    // Prepare request to shopify endpoint
-    const auto request = drogon::HttpRequest::newHttpRequest();
-    request->setMethod(drogon::Post);
-    request->setPath(path);
-    request->setContentTypeCode(drogon::CT_APPLICATION_JSON);
-    request->addHeader("X-Shopify-Access-Token", token);
-
-    request->setBody(std::move(bodyJson));
-
-    auto result = co_await client->sendRequestCoro(request);
-
-    if (!result) {
-        throw std::runtime_error(std::format(
-            "Empty Shopify Graphql Response for store {}", m_storeName));
-    }
-
-    const auto status = result->getStatusCode();
-
-    if (status < drogon::HttpStatusCode::k200OK ||
-        status >= drogon::HttpStatusCode::k300MultipleChoices) {
-        throw std::runtime_error(
-            std::format("Shopify Graphql returned non-2xx status for store {}",
-                        m_storeName));
-    }
-
-    ResponseFormat response;
-    // Copy JSON Body. We have to construct a string here to return the json
-    // without its lifetime ending. The compiler may optimize NRVO
-    const std::string responseJson{result->body()};
-
-    // TODO This steap of parsing json here may be not needed
-    if (glz::read_json(response, responseJson)) {
-        throw std::runtime_error("Invalid JSON in Shopify response");
-    }
-    // Return response and responseJson to avoid serializing again. Use move to
-    // construct the pair
-    co_return std::pair{std::move(response), std::move(responseJson)};
-}
-
 /* Fetch Product Data
  * @param Product Reference: "124412_001"
  */
 drogon::Task<FetchProductDataResponse>
 ShopifyClient::fetchProductData(const std::string_view product) {
-    auto [res, resJson] = co_await graphql<FetchProductDataResponse>(
+
+    SearchQuery query{.searchQuery = std::format("product_type:'{}'", product)};
+    auto [res, resJson] = co_await graphql<FetchProductDataResponse, SearchQuery>(
         articleSearchQuery,
-        {{"searchQuery", std::format("product_type:'{}'", product)}});
+        query
+        );
     co_return res;
 }
 

@@ -46,4 +46,16 @@ struct FetchProductDataResponse {
     };
     Data data{};
 };
+
+template <typename T>
+// To do a query request/mutation on graphql method
+struct ShopifyRequest {
+    std::string_view query;
+    T variables;
+};
+
+// To find items on shopify on fetchProductData method
+struct SearchQuery {
+    std::string searchQuery;
+};
 } // namespace sapify

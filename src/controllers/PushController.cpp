@@ -1,10 +1,10 @@
 #include "controllers/PushController.hpp"
+#include "config/Config.hpp"
 #include "controllers/types/PushTypes.hpp"
 #include "db/CloudImages.hpp"
 #include "services/types/Queryies.hpp"
 #include "utils/Media.hpp"
 #include "utils/Text.hpp"
-#include "config/Config.hpp"
 
 #include <drogon/HttpClient.h>
 #include <drogon/HttpRequest.h>
@@ -70,6 +70,9 @@ PushController::pushItems(drogon::HttpRequestPtr req) {
         throw std::runtime_error{
             "Error while parsing APISAP Cab and Det Jsons"};
     }
+
+    // MOVE THIS SOMEWHERE ELSE
+    auto responseShopy = drogon::HttpResponse::newHttpResponse();
 
     for (auto &itemCab : cab) {
         auto response = co_await m_client->fetchProductData(itemCab.ARTICULO);
@@ -165,46 +168,46 @@ PushController::pushItems(drogon::HttpRequestPtr req) {
         auto result = co_await getCloudImagesData(itemCab.ARTICULO);
 
         if (!result) {
-            std::println("[ERROR]: Item {} could not be pushed", itemCab.ARTICULO);
+            std::println("[ERROR]: Item {} could not be pushed",
+                         itemCab.ARTICULO);
             continue;
         }
 
         // Get media from cloudImages DB
-        auto& mediaMap = result.value();
+        auto &mediaMap = result.value();
         std::vector<UploadItemVariables::File> files;
 
         // Check if shopify already has images
         // -------------- REVIEW THAT THIS MAP IS FILLED CORRECTLY
         auto shopyImagesMap = getShopyIdFromMedia(itemShopy);
         // We assume that there are at least 3 images
-        for (auto& [variant, exists] : mediaMap) {
-            if (!exists) continue;
+        for (auto &[variant, exists] : mediaMap) {
+            if (!exists)
+                continue;
             addImages(files, shopyImagesMap, itemCab, variant);
         }
 
         // ADD METAFIELDS!!!
 
-        std::string buffer;
-        auto err = glz::write_json(uploadProductsVariables, buffer);
         // This may get copy ellision with lucky!
-        auto [shopyResJson, shopyRes] =
-            co_await m_client->graphql(articleUploadQuery);
+        auto [shopyResJson, shopyRes] = co_await m_client->graphql(
+            articleUploadQuery, uploadProductsVariables);
+
+        responseShopy->setContentTypeCode(
+            drogon::ContentType::CT_APPLICATION_JSON);
+        responseShopy->setBody(std::move(shopyRes));
+        // REMOVE BREAK
+        break;
     }
     // FALTARA SUBIR IDIOMAS
     // TESTING CHANGING PRODUCT NAME ONLY FROM SHOPIFY
     // String! means that it is mandatory
     // ABSTRACT
 
-
     // const auto it =
     // shopyResJson["data"]["products"]["nodes"][0]["id"].get<std::string>();
 
-    auto response = drogon::HttpResponse::newHttpResponse();
-    response->setContentTypeCode(drogon::ContentType::CT_APPLICATION_JSON);
-    response->setBody(std::move(shopyRes));
-
-    co_return response;
-
+    co_return responseShopy;
     // build shopify query "bulkOperationRunMutation"
     // "productVariantsBulkCreate" send return response
 }

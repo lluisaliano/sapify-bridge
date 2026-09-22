@@ -101,7 +101,6 @@ int run() {
     drogon::app()
         .addListener(config.host, config.port)
         .setLogLevel(logLevel::kDebug)
-        .setLogPath("./log")
         .setThreadNum(0)
         .setDocumentRoot("./static")
         .loadConfigFile("config.json")

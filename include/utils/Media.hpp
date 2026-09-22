@@ -32,7 +32,7 @@ inline std::unordered_map<std::string, std::string> getShopyIdFromMedia(
         auto end = dot.base() - 1;
 
         std::string newString(start, end);
-        shopyHasMedia.insert(std::move(newString), std::move(id));
+        shopyHasMedia.insert({std::move(newString), std::move(id)});
     }
 
     return shopyHasMedia;
