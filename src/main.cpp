@@ -15,6 +15,7 @@
 #include <print>
 #include <string>
 #include <string_view>
+#include <trantor/utils/Logger.h>
 
 // Server runner
 namespace sapify {
@@ -30,16 +31,15 @@ struct ErrorResponse {
 using Callback = std::function<void(const drogon::HttpResponsePtr &)>;
 
 int run() {
-    const auto config = sapify::Config::fromEnv();
 
     // Create shopify client
     auto client = std::make_shared<ShopifyClient>(
-        config->mascaroDomain, "pretty", config->mascaroClientId,
-        config->mascaroClientSecret, config->shopifyApiVersion);
+        config.mascaroDomain, "pretty", config.mascaroClientId,
+        config.mascaroClientSecret, config.shopifyApiVersion);
 
     // Push Controller (push information to sap) registration. We register it
     // here to pass client and config to parameters
-    auto pushController = std::make_shared<PushController>(config, client);
+    auto pushController = std::make_shared<PushController>(client);
     drogon::app().registerController(pushController);
 
     drogon::app().registerHandler(
@@ -87,12 +87,24 @@ int run() {
         });
 
     std::println("Starting sapify-bridge on {}:{} with log level {}",
-                 config->host, config->port, config->logLevel);
+                 config.host, config.port, config.logLevel);
 
     // Start drogon server, configur static files route
+    // Drogon gets env variables to load config.json but does not read .env. We could use "${DB_HOST:fallback}" to read corresponding env and place them to json
+    // Currently we read config.host and port from here because we do not export env variables but place them in the .env. In prod we shoul change this
+    // We could use a #ifndef to do so
+    // Set log level based on .config here...
+    // On the DB, we use is fast to make connections use the same thread so they avoid locks to sync threads to get data back to the thread that asked for the connection
+    // The drawback is that all queries must be async, we can only use drogon threads, not threads that we created. Each thread can have a connection_number connections, depending on the json.
+    // 10 - 20% speedboost
+    using logLevel = trantor::Logger::LogLevel;
     drogon::app()
-        .addListener(config->host, config->port)
+        .addListener(config.host, config.port)
+        .setLogLevel(logLevel::kDebug)
+        .setLogPath("./log")
+        .setThreadNum(0)
         .setDocumentRoot("./static")
+        .loadConfigFile("config.json")
         .run();
 
     return 0;

@@ -37,10 +37,9 @@ inline std::string &titleCase(std::string &string) {
 // We use utf handling here to convert cases to ascii
 inline std::string handleUTF(std::string_view string) {
     static const std::unordered_map<std::string_view, char> map = {
-        {"á", 'a'}, {"é", 'e'}, {"í", 'i'}, {"ó", 'o'}, {"ú", 'u'},
-        {"Á", 'a'}, {"É", 'e'}, {"Í", 'i'}, {"Ó", 'o'}, {"Ú", 'u'},
-        {"ñ", 'n'}, {"Ñ", 'n'}, {"ü", 'u'}, {"Ü", 'u'},
-    };
+        {"á", 'a'}, {"é", 'e'}, {"í", 'i'}, {"ó", 'o'}, {"ú", 'u'}, {"Á", 'a'},
+        {"É", 'e'}, {"Í", 'i'}, {"Ó", 'o'}, {"Ú", 'u'}, {"ñ", 'n'}, {"Ñ", 'n'},
+        {"ü", 'u'}, {"Ü", 'u'}, {"ç", 'c'}, {"Ç", 'c'}};
     std::string out;
     out.reserve(string.size());
 
@@ -86,6 +85,7 @@ inline void trim(std::string &string) {
         string.end());
 }
 
+// Handle the handle for URL
 inline std::string handleText(std::string_view string) {
     std::string asciiText = handleUTF(string);
     std::string handle;
@@ -116,8 +116,9 @@ inline std::string handleText(std::string_view string) {
 
 namespace tallas {
 // This functions converts tallas from 360 to 36 and 365 to 36.5
+[[nodiscard("Tallas values should be read")]]
 inline std::string normalizeTalla(std::string_view talla) {
-    // Returns U
+    // Returns U, We could show Única and then translafe for each language
     if (talla == "U") {
         return "U";
     }
@@ -125,6 +126,7 @@ inline std::string normalizeTalla(std::string_view talla) {
     int value;
     std::from_chars(talla.data(), talla.data() + talla.size(), value);
     // Normal Talla,  returns 35.5
+    // If tallas are less than 100, we have belts or kid tallas
     if (value > 100) {
         return std::format("{:.1f}", value / 10.0);
         // Kid talla, just returns 25, 26...

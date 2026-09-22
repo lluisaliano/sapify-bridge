@@ -1,5 +1,6 @@
 #pragma once
 
+#include "config/Config.hpp"
 #include <cstdint>
 #include <glaze/glaze.hpp>
 #include <optional>
@@ -59,6 +60,8 @@ struct UploadItemVariables {
     };
 
     // --- Media (imagen/video/etc.) ---
+    // URL Base of Picutres
+    static inline std::string PICTURES_BASE_URL = "https://" + config.picturesBaseURL;
     struct File {
         std::optional<std::string>
             id; // solo si ya existe y quieres renombrar/reemplazar por id
@@ -80,6 +83,7 @@ struct UploadItemVariables {
     };
 
     // Aqui se define el tipo de la variante. Solo hay uno, el por defecto
+    // El nombre sale en la web encima de las tallas
     static constexpr std::string_view DEFAULT_PRODUCT_OPTIONS =
         "Talla del Calzado";
     struct ProductOption {

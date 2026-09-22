@@ -1,7 +1,6 @@
 #pragma once
 
 #include <cstdint>
-#include <memory>
 #include <string>
 
 namespace sapify {
@@ -15,8 +14,12 @@ struct Config {
     std::string mascaroClientSecret;
     std::string shopifyApiVersion;
     std::string apiSAP;
+    std::string picturesBaseURL;
 
     // Get config from environment variables
-    static std::shared_ptr<const Config> fromEnv();
+    static const Config fromEnv();
 };
+
+inline const auto config = sapify::Config::fromEnv();
+
 } // namespace sapify

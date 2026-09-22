@@ -1,6 +1,10 @@
 #include "controllers/PushController.hpp"
 #include "controllers/types/PushTypes.hpp"
-#include "utils/text.hpp"
+#include "db/CloudImages.hpp"
+#include "services/types/Queryies.hpp"
+#include "utils/Media.hpp"
+#include "utils/Text.hpp"
+#include "config/Config.hpp"
 
 #include <drogon/HttpClient.h>
 #include <drogon/HttpRequest.h>
@@ -27,7 +31,7 @@ PushController::pushItems(drogon::HttpRequestPtr req) {
     const auto reqBody = std::string{req->body()};
 
     // Fetch API for shopify cab and det data
-    const auto baseUrl{"https://" + m_config->apiSAP};
+    const auto baseUrl{"https://" + config.apiSAP};
     auto client = drogon::HttpClient::newHttpClient(baseUrl);
 
     // Get Cab Data
@@ -119,35 +123,78 @@ PushController::pushItems(drogon::HttpRequestPtr req) {
         inputValues.status = ACTIVE;
 
         // For each talla, create a variant, called productOption on shopify
-        // ---------------- IMPORTANT: We need to clean tallas
+        // Define Variants Names
+        UploadItemVariables::ProductOption tallas;
+        // Define Variants Data
+        std::vector<UploadItemVariables::Variant> variants;
+
+        // Tallas name
+        tallas.name = UploadItemVariables::DEFAULT_PRODUCT_OPTIONS;
         for (auto &d : itemDet) {
-            tallas::normalizeTalla(d.TALLA);
+            // Fill variant names
+            auto normaliedTalla = tallas::normalizeTalla(d.TALLA);
+            tallas.values.emplace_back(normaliedTalla);
+
+            // Fill variant data
+            std::vector<UploadItemVariables::VariantOptionValue>
+                variantOptionValues;
+            variantOptionValues.push_back({
+                .optionName =
+                    std::string{UploadItemVariables::DEFAULT_PRODUCT_OPTIONS},
+                .name = normaliedTalla,
+            });
+            auto price = std::format(
+                "{}", itemCab.PVP); // Precio Peninsula. Dicho por Cristian
+            UploadItemVariables::Variant variant{
+                .optionValues = variantOptionValues,
+                .sku = d.ARTICULO + "_" + d.TALLA,
+                .price = price,
+                .compareAtPrice = price, // Mismo precio
+                .id = std::nullopt // No hace falta, porque el matching es con
+                                   // los optionValues
+            };
+            variants.push_back(variant);
         }
-        UploadItemVariables::ProductOption
 
-            inputValues.productOptions.push_back(
-                {.name = UploadItemVariables::DEFAULT_PRODUCT_OPTIONS})
+        // Place data into the final object
+        inputValues.productOptions.push_back(std::move(tallas));
+        inputValues.variants = std::move(variants);
+
+        // Media
+        // Check if media exists
+        auto result = co_await getCloudImagesData(itemCab.ARTICULO);
+
+        if (!result) {
+            std::println("[ERROR]: Item {} could not be pushed", itemCab.ARTICULO);
+            continue;
+        }
+
+        // Get media from cloudImages DB
+        auto& mediaMap = result.value();
+        std::vector<UploadItemVariables::File> files;
+
+        // Check if shopify already has images
+        // -------------- REVIEW THAT THIS MAP IS FILLED CORRECTLY
+        auto shopyImagesMap = getShopyIdFromMedia(itemShopy);
+        // We assume that there are at least 3 images
+        for (auto& [variant, exists] : mediaMap) {
+            if (!exists) continue;
+            addImages(files, shopyImagesMap, itemCab, variant);
+        }
+
+        // ADD METAFIELDS!!!
+
+        std::string buffer;
+        auto err = glz::write_json(uploadProductsVariables, buffer);
+        // This may get copy ellision with lucky!
+        auto [shopyResJson, shopyRes] =
+            co_await m_client->graphql(articleUploadQuery);
     }
-
     // FALTARA SUBIR IDIOMAS
     // TESTING CHANGING PRODUCT NAME ONLY FROM SHOPIFY
     // String! means that it is mandatory
     // ABSTRACT
 
-    // Use redirectNewHandle if handle is changed, handle is based on title on
-    // first upload. If title is modified, we have to also pass new handle and
-    // use redirectnewhandle
-    //
-    // SELECT RANDOM ITEM, THIS WILL COME FROM THE LIST, We need to keys as we
-    // create an array otherwise We use product_type to search only through
-    // product_type
-    std::string productType = "53212_001";
-    glz::generic variables{
-        {"productType", std::format("product_type:'{}'", productType)}};
-
-    // This may get copy ellision with lucky!
-    auto [shopyResJson, shopyRes] =
-        co_await m_client->graphql(GetProductsByArticleQuery, variables);
 
     // const auto it =
     // shopyResJson["data"]["products"]["nodes"][0]["id"].get<std::string>();

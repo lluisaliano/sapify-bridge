@@ -1,6 +1,5 @@
 #pragma once
 
-#include "config/Config.hpp"
 #include "services/ShopifyClient.hpp"
 #include <drogon/HttpController.h>
 #include <drogon/HttpRequest.h>
@@ -17,9 +16,8 @@ namespace sapify {
 // We use move to avoid one extra copy
 class PushController : public drogon::HttpController<PushController, false> {
   public:
-    PushController(std::shared_ptr<const Config> config,
-                   std::shared_ptr<ShopifyClient> client)
-        : m_config{std::move(config)}, m_client{std::move(client)} {};
+    PushController(std::shared_ptr<ShopifyClient> client)
+        : m_client{std::move(client)} {};
 
     METHOD_LIST_BEGIN
 
@@ -43,7 +41,6 @@ class PushController : public drogon::HttpController<PushController, false> {
     // drogon::Task<drogon::HttpResponsePtr> pushStock(drogon::HttpRequestPtr);
 
   private:
-    std::shared_ptr<const Config> m_config;
     std::shared_ptr<ShopifyClient> m_client;
 };
 } // namespace sapify
