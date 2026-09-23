@@ -24,12 +24,13 @@ struct ItemCab {
     std::string TEMPORADA;
     std::string TEMA;
     std::string MATERIAL;
-    std::string EMPEINE;
-    std::string FORRO;
-    std::string PLANTILLA;
-    std::string SUELA;
-    std::string TACON;
-    std::string PUNTA;
+    // This following guys can be null, think the why by thinking in a jacket!
+    std::optional<std::string> EMPEINE;
+    std::optional<std::string> FORRO;
+    std::optional<std::string> PLANTILLA;
+    std::optional<std::string> SUELA;
+    std::optional<std::string> TACON;
+    std::optional<std::string> PUNTA;
 
     std::uint16_t PVP; // PRECIO PVP, Takes price from precio_peninsula from
                        // supertcmodel view

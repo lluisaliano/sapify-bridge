@@ -71,7 +71,8 @@ PushController::pushItems(drogon::HttpRequestPtr req) {
             "Error while parsing APISAP Cab and Det Jsons"};
     }
 
-    // MOVE THIS SOMEWHERE ELSE
+    // MOVE THIS SOMEWHERE ELSE, THIS IS CURRENTLY USED TO SET A RESPONSE FOR
+    // THE HTTP POST OF THE USER
     auto responseShopy = drogon::HttpResponse::newHttpResponse();
 
     for (auto &itemCab : cab) {
@@ -79,10 +80,13 @@ PushController::pushItems(drogon::HttpRequestPtr req) {
         // If item exists, there will be only one node, as we have a unique
         // product type
         auto nodes = response.data.products.nodes;
-        auto itemShopy = nodes[0];
         // If nodes is not empty items does exist
         bool itemExists = !nodes.empty();
-
+        // If item exists, keep its data in itemShopy
+        FetchProductDataResponse::Data::Products::ProductNode itemShopy;
+        if (itemExists) {
+            itemShopy = nodes[0];
+        }
         // Using C++ views to get detItems
         auto itemDet = det | std::views::filter([&](ItemDet &elem) {
                            return elem.ARTICULO == itemCab.ARTICULO;
@@ -150,7 +154,8 @@ PushController::pushItems(drogon::HttpRequestPtr req) {
                 "{}", itemCab.PVP); // Precio Peninsula. Dicho por Cristian
             UploadItemVariables::Variant variant{
                 .optionValues = variantOptionValues,
-                .sku = d.ARTICULO + "_" + d.TALLA,
+                .sku = d.ARTICULO + "_" +
+                       d.TALLA, // SKU is built with not normalized talla
                 .price = price,
                 .compareAtPrice = price, // Mismo precio
                 .id = std::nullopt // No hace falta, porque el matching es con
@@ -164,28 +169,32 @@ PushController::pushItems(drogon::HttpRequestPtr req) {
         inputValues.variants = std::move(variants);
 
         // Media
-        // Check if media exists
-        auto result = co_await getCloudImagesData(itemCab.ARTICULO);
+        // Check if media exists, this returns a std::optional
+        auto cloudImagesData = co_await getCloudImagesData(itemCab.ARTICULO);
 
-        if (!result) {
-            std::println("[ERROR]: Item {} could not be pushed",
+        if (!cloudImagesData) {
+            std::println("[ERROR]: Item {} could not be pushed because there are no images",
                          itemCab.ARTICULO);
             continue;
         }
 
-        // Get media from cloudImages DB
-        auto &mediaMap = result.value();
+        // Get media from cloudImages DB to check which images we have to upload
+        auto &mediaMap = cloudImagesData.value();
+        // Set files vector to fill and send on the shopify request to upload item
         std::vector<UploadItemVariables::File> files;
 
         // Check if shopify already has images
-        // -------------- REVIEW THAT THIS MAP IS FILLED CORRECTLY
         auto shopyImagesMap = getShopyIdFromMedia(itemShopy);
+
         // We assume that there are at least 3 images
         for (auto &[variant, exists] : mediaMap) {
             if (!exists)
                 continue;
             addImages(files, shopyImagesMap, itemCab, variant);
         }
+
+        // Add created files to inputValue
+        inputValues.files = std::move(files);
 
         // ADD METAFIELDS!!!
 
@@ -202,13 +211,9 @@ PushController::pushItems(drogon::HttpRequestPtr req) {
     // FALTARA SUBIR IDIOMAS
     // TESTING CHANGING PRODUCT NAME ONLY FROM SHOPIFY
     // String! means that it is mandatory
-    // ABSTRACT
-
-    // const auto it =
-    // shopyResJson["data"]["products"]["nodes"][0]["id"].get<std::string>();
 
     co_return responseShopy;
-    // build shopify query "bulkOperationRunMutation"
+    // --------- IMPORTANT build shopify query "bulkOperationRunMutation" to avoid rate LImits
     // "productVariantsBulkCreate" send return response
 }
 } // namespace sapify

@@ -15,10 +15,9 @@ namespace sapify {
 // In sabates order is: Pers Top Side Back Det
 // In bolsos order is: Side Pers Top Back Det Lat
 
-using ImageVariantMap =  std::unordered_map<std::string, bool>;
+using ImageVariantMap = std::unordered_map<std::string, bool>;
 
-inline drogon::Task<
-    std::optional<ImageVariantMap>>
+inline drogon::Task<std::optional<ImageVariantMap>>
 getCloudImagesData(std::string_view item) {
     // We use thread_local because we use is_fast client, so each thread must
     // have its own client With is_fast = false, a thread pool is used to run
@@ -32,16 +31,16 @@ getCloudImagesData(std::string_view item) {
     try {
         // Get if variant image exists
         auto result = co_await client->execSqlCoro(R"(
-    SELECT
-        cast(MAX(CASE WHEN image_name LIKE '%' || $1 || '_pers%' THEN CAST(uploaded AS INT) ELSE 0 END) as bool) AS pers,
-        cast(MAX(CASE WHEN image_name LIKE '%' || $1 || '_top%' THEN CAST(uploaded AS INT) ELSE 0 END) as bool) AS top,
-        cast(MAX(CASE WHEN image_name LIKE '%' || $1 || '_side%' THEN CAST(uploaded AS INT) ELSE 0 END) as bool) AS side,
-        cast(MAX(CASE WHEN image_name LIKE '%' || $1 || '_back%' THEN CAST(uploaded AS INT) ELSE 0 END) as bool) AS back,
-        cast(MAX(CASE WHEN image_name LIKE '%' || $1 || '_det%' THEN CAST(uploaded AS INT) ELSE 0 END) as bool) AS det,
-        cast(MAX(CASE WHEN image_name LIKE '%' || $1 || '_lateral%' THEN CAST(uploaded AS INT) ELSE 0 END) as bool) AS lateral
-    FROM cloudflare
-    WHERE image_name LIKE '%' || $1 || '%')",
-                                                   item);
+    select
+        cast(max(case when image_name like '%' || $1 || '_pers%' then cast(uploaded as int) else 0 end) as bool) as pers,
+        cast(max(case when image_name like '%' || $1 || '_top%' then cast(uploaded as int) else 0 end) as bool) as top,
+        cast(max(case when image_name like '%' || $1 || '_side%' then cast(uploaded as int) else 0 end) as bool) as side,
+        cast(max(case when image_name like '%' || $1 || '_back%' then cast(uploaded as int) else 0 end) as bool) as back,
+        cast(max(case when image_name like '%' || $1 || '_det%' then cast(uploaded as int) else 0 end) as bool) as det,
+        cast(max(case when image_name like '%' || $1 || '_lateral%' then cast(uploaded as int) else 0 end) as bool) as lateral
+    from cloudflare
+    where image_name like '%' || $1 || '%')",
+                                                  item);
 
         ImageVariantMap imageVariants;
 

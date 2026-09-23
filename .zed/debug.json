@@ -3,7 +3,6 @@
     "label": "C++: depurar sapify-bridge",
     "adapter": "CodeLLDB",
     "request": "launch",
-    "build": "CMake: compilar (Debug)",
     "program": "$ZED_WORKTREE_ROOT/build/sapify-bridge",
     "cwd": "$ZED_WORKTREE_ROOT",
     "stopOnEntry": false

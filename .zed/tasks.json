@@ -18,20 +18,14 @@
     "save": "all"
   },
   {
+    "label": "CMake: configurar (Release)",
+    "command": "cmake -G Ninja -S . -B build/release -DCMAKE_BUILD_TYPE=Release",
+    "cwd": "$ZED_WORKTREE_ROOT",
+    "save": "all"
+  },
+  {
     "label": "CMake: compilar (Debug)",
-    "command": "cmake -G Ninja -S . -B build -DCMAKE_BUILD_TYPE=Debug && cmake --build build --parallel",
-    "cwd": "$ZED_WORKTREE_ROOT",
-    "save": "all"
-  },
-  {
-    "label": "CMake: compilar y ejecutar (Debug)",
-    "command": "cmake -G Ninja -S . -B build -DCMAKE_BUILD_TYPE=Debug && cmake --build build --parallel && ./build/sapify-bridge",
-    "cwd": "$ZED_WORKTREE_ROOT",
-    "save": "all"
-  },
-  {
-    "label": "CMake: recompilar (Debug)",
-    "command": "cmake -G Ninja -S . -B build -DCMAKE_BUILD_TYPE=Debug && cmake --build build --clean-first --parallel",
+    "command": "cmake --build build --parallel",
     "cwd": "$ZED_WORKTREE_ROOT",
     "save": "all"
   },
@@ -42,14 +36,8 @@
   },
   {
     "label": "CMake: compilar (Release)",
-    "command": "cmake -G Ninja -S . -B build/release -DCMAKE_BUILD_TYPE=Release && cmake --build build/release --parallel",
+    "command": "cmake --build build/release --parallel",
     "cwd": "$ZED_WORKTREE_ROOT",
     "save": "all"
   },
-  {
-    "label": "CMake: compilar y ejecutar (Release)",
-    "command": "cmake -G Ninja -S . -B build/release -DCMAKE_BUILD_TYPE=Release && cmake --build build/release --parallel && ./build/release/sapify-bridge",
-    "cwd": "$ZED_WORKTREE_ROOT",
-    "save": "all"
-  }
 ]

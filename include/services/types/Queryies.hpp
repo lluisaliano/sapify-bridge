@@ -2,6 +2,7 @@
 
 #include <string_view>
 namespace sapify {
+// Query used to get product data
 // searchQuery uses productType which contains article
 constexpr std::string_view articleSearchQuery = R"(
   query GetProductByArticle($searchQuery: String!) {

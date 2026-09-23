@@ -103,8 +103,23 @@ class ShopifyClient {
           // without its lifetime ending. The compiler may optimize NRVO
           const std::string responseJson{result->body()};
 
-          // TODO This steap of parsing json here may be not needed
-          if (glz::read_json(response, responseJson)) {
+          /*
+           * Adding comment on GLZ as this may be prone to error.
+           * By default, glz throws error on missing files on the struct when parsing a json string
+           * But does not throw error and just default initializes the fields when the json has less items than the struct
+           * To control the behavior:
+           *   auto ec = glz::read<glz::opts{
+           *    .error_on_unknown_keys = false,
+           *   .error_on_missing_keys = true
+           *    }>(response, json);
+           *
+           * Where error on unknown_keys = false removes extra json keys error and
+           * error on missng keys activates missing keys in json
+           */
+
+          // --- TODO This steap of parsing json here may be not needed, because we could just return the json string
+          // We ignore error on unkown keys to avoid the reading of extension field of shopify
+          if (auto ec = glz::read<glz::opts{.error_on_unknown_keys = false}>(response, responseJson)) {
               throw std::runtime_error("Invalid JSON in Shopify response");
           }
           // Return response and responseJson to avoid serializing again. Use move to

@@ -115,19 +115,24 @@ inline std::string handleText(std::string_view string) {
 } // namespace text
 
 namespace tallas {
+// If tallas are bigger than this number, we will convert them to decimal format
+const int TALLAS_THRESHOLD = 100;
 // This functions converts tallas from 360 to 36 and 365 to 36.5
 [[nodiscard("Tallas values should be read")]]
 inline std::string normalizeTalla(std::string_view talla) {
-    // Returns U, We could show Única and then translafe for each language
-    if (talla == "U") {
-        return "U";
+    // Returns alphabetic talla if it is the case, U, S, M, L, XL...
+    // We use std::all_of to check all chars
+    bool isAlphabetic = std::ranges::all_of(
+        talla, [](unsigned char c) { return std::isalpha(c); });
+    if (isAlphabetic) {
+        return std::string{talla};
     }
-    // Convert to integer
+    // Convert to integer if it is not alphabetic. Using from_chars.
     int value;
     std::from_chars(talla.data(), talla.data() + talla.size(), value);
     // Normal Talla,  returns 35.5
-    // If tallas are less than 100, we have belts or kid tallas
-    if (value > 100) {
+    // If tallas are less than 100, we have belts, jackets or kid tallas
+    if (value > TALLAS_THRESHOLD) {
         return std::format("{:.1f}", value / 10.0);
         // Kid talla, just returns 25, 26...
     } else {
