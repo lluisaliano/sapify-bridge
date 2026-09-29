@@ -35,6 +35,10 @@ ShopifyClient::ShopifyClient(std::string_view shopDomain,
       m_clientSecret{clientSecret}, m_apiVersion{apiVersion} {
     // We have to fetch API to get corresponding accessToken
     // Vary this when adding Pretty
+    if (storeName != "mascaro" && storeName != "prettyballerinas") {
+        throw std::runtime_error("Store Name is not correct, it has to be or "
+                                 "mascaro or prettyballerinas");
+    }
 }
 
 /* Fetch Product Data
@@ -44,10 +48,9 @@ drogon::Task<FetchProductDataResponse>
 ShopifyClient::fetchProductData(const std::string_view product) {
 
     SearchQuery query{.searchQuery = std::format("product_type:'{}'", product)};
-    auto [res, resJson] = co_await graphql<FetchProductDataResponse, SearchQuery>(
-        articleSearchQuery,
-        query
-        );
+    auto [res, resJson] =
+        co_await graphql<FetchProductDataResponse, SearchQuery>(
+            articleSearchQuery, query);
     co_return res;
 }
 
@@ -107,4 +110,35 @@ drogon::Task<std::string> ShopifyClient::getAccessToken() {
 
     co_return m_accessToken;
 };
+
+// Get Metafield objects for color range object
+drogon::Task<std::unordered_map<std::string, std::string>>
+ShopifyClient::getColorRangeObjects() {
+    std::string_view COLOR_RANGE_OBJECT_QUERY = R"(
+           query {
+             metaobjectDefinition(id: "gid://shopify/MetaobjectDefinition/19368542552") {
+               type
+               metaobjects(first: 250) {
+                 nodes { id handle displayName }
+               }
+             }
+           }
+           )";
+
+    auto [res, resString] = co_await graphql<MetaobjectDefinitionResponse>(COLOR_RANGE_OBJECT_QUERY);
+
+    // Define return map
+    std::unordered_map<std::string, std::string> metafieldObjects;
+
+    // This should never be empty, but if it is, we just return empty map
+    if (!res.data || !res.data->metaobjectDefinition) {
+        co_return {};
+    }
+
+    for (auto& object : res.data->metaobjectDefinition->metaobjects.nodes) {
+        metafieldObjects.emplace(std::move(object.handle), std::move(object.id)); // Handle returns blancos, rosados..
+    }
+
+    co_return metafieldObjects;
+}
 } // namespace sapify

@@ -9,16 +9,19 @@
 #include <glaze/json/generic_fwd.hpp>
 #include <string>
 #include <string_view>
+#include <unordered_map>
 
 namespace sapify {
 
 class ShopifyClient {
   public:
+    // Store name must be the same as the metafields namespace. Or "mascaro" or
+    // prettyballerinas
     ShopifyClient(std::string_view shopDomain, std::string_view storeName,
                   std::string_view clientId, std::string_view clientSecret,
                   std::string_view apiVersion);
 
-    // ------------ This will go private
+    // ------------ This one will go private
     // Ensure accesToken exists
     drogon::Task<std::string> ensureAccessToken();
 
@@ -28,6 +31,12 @@ class ShopifyClient {
 
     // Return accessToken
     std::string_view token() const { return m_accessToken; };
+
+    // Return metafield namespace based on storeName
+    std::string getNameSpace() const { return m_storeName; }
+
+    // Return metafield objects for shoe_color_range_object metaobject definition. It gets up to 250, so if more defined use pagination
+    drogon::Task<std::unordered_map<std::string, std::string>> getColorRangeObjects();
 
   private:
     std::string m_shopDomain{};
@@ -49,82 +58,93 @@ class ShopifyClient {
     }
 
   public:
-       // Launch a graphql query to shopify
-      // Send queries to Shopify admin api using graphql
-      template <typename ResponseFormat = glz::generic, typename Variables>
-      drogon::Task<std::pair<ResponseFormat, std::string>>
-      graphql(std::string_view query,
-                             const Variables &variables) {
+    // Launch a graphql query to shopify
+    // Send queries to Shopify admin api using graphql
+    template <typename ResponseFormat = glz::generic, typename Variables>
+    drogon::Task<std::pair<ResponseFormat, std::string>>
+    graphql(std::string_view query, const Variables &variables) {
 
-          // Check if token is valid, we get it from here as it is cleanr than taking
-          // if from the private member
-          const auto token = co_await ensureAccessToken();
+        // Check if token is valid, we get it from here as it is cleanr than
+        // taking if from the private member
+        const auto token = co_await ensureAccessToken();
 
-          const auto baseUrl{"https://" + m_shopDomain};
-          // Get path from .env variable too
-          const auto path{"/admin/api/2026-07/graphql.json"};
+        const auto baseUrl{"https://" + m_shopDomain};
+        // Get path from .env variable too
+        const auto path{"/admin/api/2026-07/graphql.json"};
 
-          // Set HTTP client
-          auto client{drogon::HttpClient::newHttpClient(baseUrl)};
+        // Set HTTP client
+        auto client{drogon::HttpClient::newHttpClient(baseUrl)};
 
-          ShopifyRequest<Variables> body{query, variables};
-          std::string bodyJson;
-          if (glz::write_json(body, bodyJson)) {
-              throw std::runtime_error("Failed to serialize Shopify request");
-          }
+        ShopifyRequest<Variables> body{query, variables};
+        std::string bodyJson;
+        if (glz::write_json(body, bodyJson)) {
+            throw std::runtime_error("Failed to serialize Shopify request");
+        }
 
-          // Prepare request to shopify endpoint
-          const auto request = drogon::HttpRequest::newHttpRequest();
-          request->setMethod(drogon::Post);
-          request->setPath(path);
-          request->setContentTypeCode(drogon::CT_APPLICATION_JSON);
-          request->addHeader("X-Shopify-Access-Token", token);
+        // Prepare request to shopify endpoint
+        const auto request = drogon::HttpRequest::newHttpRequest();
+        request->setMethod(drogon::Post);
+        request->setPath(path);
+        request->setContentTypeCode(drogon::CT_APPLICATION_JSON);
+        request->addHeader("X-Shopify-Access-Token", token);
 
-          request->setBody(std::move(bodyJson));
+        request->setBody(std::move(bodyJson));
 
-          auto result = co_await client->sendRequestCoro(request);
+        auto result = co_await client->sendRequestCoro(request);
 
-          if (!result) {
-              throw std::runtime_error(std::format(
-                  "Empty Shopify Graphql Response for store {}", m_storeName));
-          }
+        if (!result) {
+            throw std::runtime_error(std::format(
+                "Empty Shopify Graphql Response for store {}", m_storeName));
+        }
 
-          const auto status = result->getStatusCode();
+        const auto status = result->getStatusCode();
 
-          if (status < drogon::HttpStatusCode::k200OK ||
-              status >= drogon::HttpStatusCode::k300MultipleChoices) {
-              throw std::runtime_error(
-                  std::format("Shopify Graphql returned non-2xx status for store {}",
-                              m_storeName));
-          }
+        if (status < drogon::HttpStatusCode::k200OK ||
+            status >= drogon::HttpStatusCode::k300MultipleChoices) {
+            throw std::runtime_error(std::format(
+                "Shopify Graphql returned non-2xx status for store {}",
+                m_storeName));
+        }
 
-          ResponseFormat response;
-          // Copy JSON Body. We have to construct a string here to return the json
-          // without its lifetime ending. The compiler may optimize NRVO
-          const std::string responseJson{result->body()};
+        ResponseFormat response;
+        // Copy JSON Body. We have to construct a string here to return the json
+        // without its lifetime ending. The compiler may optimize NRVO
+        const std::string responseJson{result->body()};
 
-          /*
-           * Adding comment on GLZ as this may be prone to error.
-           * By default, glz throws error on missing files on the struct when parsing a json string
-           * But does not throw error and just default initializes the fields when the json has less items than the struct
-           * To control the behavior:
-           *   auto ec = glz::read<glz::opts{
-           *    .error_on_unknown_keys = false,
-           *   .error_on_missing_keys = true
-           *    }>(response, json);
-           *
-           * Where error on unknown_keys = false removes extra json keys error and
-           * error on missng keys activates missing keys in json
-           */
+        /*
+         * Adding comment on GLZ as this may be prone to error.
+         * By default, glz throws error on missing files on the struct when
+         * parsing a json string But does not throw error and just default
+         * initializes the fields when the json has less items than the struct
+         * To control the behavior:
+         *   auto ec = glz::read<glz::opts{
+         *    .error_on_unknown_keys = false,
+         *   .error_on_missing_keys = true
+         *    }>(response, json);
+         *
+         * Where error on unknown_keys = false removes extra json keys error and
+         * error on missng keys activates missing keys in json
+         */
 
-          // --- TODO This steap of parsing json here may be not needed, because we could just return the json string
-          // We ignore error on unkown keys to avoid the reading of extension field of shopify
-          if (auto ec = glz::read<glz::opts{.error_on_unknown_keys = false}>(response, responseJson)) {
-              throw std::runtime_error("Invalid JSON in Shopify response");
-          }
-          // Return response and responseJson to avoid serializing again. Use move to
-          // construct the pair
-          co_return std::pair{std::move(response), std::move(responseJson)};
-      }
+        // --- TODO This steap of parsing json here may be not needed, because
+        // we could just return the json string We ignore error on unkown keys
+        // to avoid the reading of extension field of shopify
+        if (auto ec = glz::read<glz::opts{.error_on_unknown_keys = false}>(
+                response, responseJson)) {
+            throw std::runtime_error("Invalid JSON in Shopify response");
+        }
+        // Return response and responseJson to avoid serializing again. Use move
+        // to construct the pair
+        co_return std::pair{std::move(response), std::move(responseJson)};
+    }
+
+    // Graphql with no variables
+    template <typename ResponseFormat = glz::generic>
+    drogon::Task<std::pair<ResponseFormat, std::string>>
+    graphql(std::string_view query) {
+        co_return co_await graphql<ResponseFormat>(
+            query, std::string_view{}); // graphql with no variables, it uses "" on variables field
+    }
+
 };
 } // namespace sapify

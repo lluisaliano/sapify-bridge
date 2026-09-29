@@ -10,7 +10,7 @@
 #include <unordered_map>
 
 namespace sapify {
-namespace text {
+namespace textUtils {
 // Convert text to Title Case
 inline std::string &titleCase(std::string &string) {
     bool newWord{true};
@@ -112,9 +112,17 @@ inline std::string handleText(std::string_view string) {
 
     return handle;
 }
-} // namespace text
 
-namespace tallas {
+// Convert everything to lower case
+inline std::string toLower(std::string s) {
+    std::ranges::transform(s, s.begin(),
+                           [](unsigned char c) { return std::tolower(c); });
+    return s;
+}
+
+} // namespace textUtils
+
+namespace tallasUtils {
 // If tallas are bigger than this number, we will convert them to decimal format
 const int TALLAS_THRESHOLD = 100;
 // This functions converts tallas from 360 to 36 and 365 to 36.5
@@ -128,7 +136,7 @@ inline std::string normalizeTalla(std::string_view talla) {
         return std::string{talla};
     }
     // Convert to integer if it is not alphabetic. Using from_chars.
-    int value;
+    int value{0};
     std::from_chars(talla.data(), talla.data() + talla.size(), value);
     // Normal Talla,  returns 35.5
     // If tallas are less than 100, we have belts, jackets or kid tallas
@@ -139,5 +147,5 @@ inline std::string normalizeTalla(std::string_view talla) {
         return std::string{talla};
     }
 }
-} // namespace tallas
+} // namespace tallasUtils
 } // namespace sapify

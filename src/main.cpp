@@ -32,9 +32,9 @@ using Callback = std::function<void(const drogon::HttpResponsePtr &)>;
 
 int run() {
 
-    // Create shopify client
+    // Create shopify client // check that store name must be mascaro or prettyballerinas
     auto client = std::make_shared<ShopifyClient>(
-        config.mascaroDomain, "pretty", config.mascaroClientId,
+        config.mascaroDomain, "mascaro", config.mascaroClientId,
         config.mascaroClientSecret, config.shopifyApiVersion);
 
     // Push Controller (push information to sap) registration. We register it

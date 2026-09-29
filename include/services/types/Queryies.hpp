@@ -27,6 +27,8 @@ constexpr std::string_view articleSearchQuery = R"(
         nodes {
           id
           sku
+          selectedOptions { name value }
+          inventoryItem { id }
         }
       }
     }
@@ -56,6 +58,20 @@ constexpr std::string_view articleUploadQuery = R"(
         }
         productSetOperation { id status userErrors { code field message } }
         userErrors { field message code }
+      }
+    }
+)";
+
+constexpr std::string_view articleMetafieldsQuery = R"(
+    mutation SetProductMetafields($metafields: [MetafieldsSetInput!]!) {
+      metafieldsSet(metafields: $metafields) {
+        metafields {
+          id
+          namespace
+          key
+          value
+          type
+        }
       }
     }
 )";

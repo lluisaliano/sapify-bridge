@@ -4,7 +4,9 @@
 #include "db/CloudImages.hpp"
 #include "services/types/Queryies.hpp"
 #include "utils/Media.hpp"
+#include "utils/Metafields.hpp"
 #include "utils/Text.hpp"
+#include "utils/Variants.hpp"
 
 #include <drogon/HttpClient.h>
 #include <drogon/HttpRequest.h>
@@ -15,6 +17,7 @@
 #include <optional>
 #include <stdexcept>
 #include <string>
+#include <unordered_map>
 
 namespace sapify {
 drogon::Task<drogon::HttpResponsePtr>
@@ -54,6 +57,7 @@ PushController::pushItems(drogon::HttpRequestPtr req) {
     auto responseCab = co_await client->sendRequestCoro(requestCab);
     auto responseDet = co_await client->sendRequestCoro(requestDet);
 
+    // Check if request are ok
     if (responseCab->getStatusCode() < drogon::k200OK ||
         responseCab->getStatusCode() >= drogon::k300MultipleChoices ||
         responseDet->getStatusCode() < drogon::k200OK ||
@@ -72,7 +76,10 @@ PushController::pushItems(drogon::HttpRequestPtr req) {
     }
 
     // MOVE THIS SOMEWHERE ELSE, THIS IS CURRENTLY USED TO SET A RESPONSE FOR
-    // THE HTTP POST OF THE USER
+    // THE HTTP POST OF THE USER, if updating multiple articles, it should
+    // return an array with status and errors for each product The
+    // initialization of the httpresponse can be left here but should be updated
+    // with each product and send after the for loop
     auto responseShopy = drogon::HttpResponse::newHttpResponse();
 
     for (auto &itemCab : cab) {
@@ -109,20 +116,21 @@ PushController::pushItems(drogon::HttpRequestPtr req) {
             std::format("{} {} {} {}", itemCab.TEMA, itemCab.NOMBRE_HORMA,
                         itemCab.MATERIAL, itemCab.COLOR);
         // Trim text
-        text::trim(title);
+        textUtils::trim(title);
         // Format title to Title Case and move it
-        inputValues.title = std::move(text::titleCase(title));
+        inputValues.title = std::move(textUtils::titleCase(title));
 
         // U_GSP_REFERENCE
         inputValues.productType = itemCab.ARTICULO;
 
         // ---------------- AQUI HAY QUE PONER TAGS HTML PARA SEO
         inputValues.descriptionHtml = itemCab.DESCRIPCION_LARGA;
+        //-----------IMPORTANTE: Vendor depende de tienda
         inputValues.vendor = "Mascaro";
 
         // Handle
         // Convert title to the form hola-adeu-test
-        inputValues.handle = text::handleText(title);
+        inputValues.handle = textUtils::handleText(inputValues.title);
         inputValues.redirectNewHandle = true; // Forces to redirect all handles
 
         // Default upload of items set to Active
@@ -130,17 +138,29 @@ PushController::pushItems(drogon::HttpRequestPtr req) {
         inputValues.status = ACTIVE;
 
         // For each talla, create a variant, called productOption on shopify
+
         // Define Variants Names
-        UploadItemVariables::ProductOption tallas;
+        UploadItemVariables::ProductOption tallasOptions;
         // Define Variants Data
         std::vector<UploadItemVariables::Variant> variants;
 
+        // Build map of existing variants and its GIDs to pass them if they
+        // exist
+        std::unordered_map<std::string, std::string> existingVariantsGidMap;
+        if (itemExists) {
+            existingVariantsGidMap =
+                variantsUtils::buildMapWithVariantGID(itemShopy);
+        }
+
         // Tallas name
-        tallas.name = UploadItemVariables::DEFAULT_PRODUCT_OPTIONS;
+        tallasOptions.name = UploadItemVariables::DEFAULT_PRODUCT_OPTIONS;
+        // Loop through each talla coming from itemDet, itemDet come from ean,
+        // where empty eans are not returned If new eans are added, we just
+        // update them
         for (auto &d : itemDet) {
             // Fill variant names
-            auto normaliedTalla = tallas::normalizeTalla(d.TALLA);
-            tallas.values.emplace_back(normaliedTalla);
+            auto normalizedTalla = tallasUtils::normalizeTalla(d.TALLA);
+            tallasOptions.values.emplace_back(normalizedTalla);
 
             // Fill variant data
             std::vector<UploadItemVariables::VariantOptionValue>
@@ -148,24 +168,38 @@ PushController::pushItems(drogon::HttpRequestPtr req) {
             variantOptionValues.push_back({
                 .optionName =
                     std::string{UploadItemVariables::DEFAULT_PRODUCT_OPTIONS},
-                .name = normaliedTalla,
+                .name = normalizedTalla,
             });
             auto price = std::format(
-                "{}", itemCab.PVP); // Precio Peninsula. Dicho por Cristian
+                "{}", itemCab.PVP); // Precio Peninsula. Said by Cristian
+
+            // Check if talla already existed on shopify, if itemShopy did not
+            // exist, this just gives a nullopt
+            std::optional<std::string> id;
+            if (itemExists) {
+                if (auto it = existingVariantsGidMap.find(normalizedTalla); it != existingVariantsGidMap.end()) {
+                    id = it->second;
+                }
+            }
+
             UploadItemVariables::Variant variant{
                 .optionValues = variantOptionValues,
                 .sku = d.ARTICULO + "_" +
                        d.TALLA, // SKU is built with not normalized talla
                 .price = price,
                 .compareAtPrice = price, // Mismo precio
-                .id = std::nullopt // No hace falta, porque el matching es con
-                                   // los optionValues
+                // If Talla exists, assign id, otherwise, nullopt to create it
+                .id = id // If variant exists, we have to pass
+                         // it the id, otherwise a new variant
+                         // that replaces the old one replaces
+                         // it deleting its relation with the
+                         // stock and old buy orders
             };
             variants.push_back(variant);
         }
 
         // Place data into the final object
-        inputValues.productOptions.push_back(std::move(tallas));
+        inputValues.productOptions.push_back(std::move(tallasOptions));
         inputValues.variants = std::move(variants);
 
         // Media
@@ -173,14 +207,16 @@ PushController::pushItems(drogon::HttpRequestPtr req) {
         auto cloudImagesData = co_await getCloudImagesData(itemCab.ARTICULO);
 
         if (!cloudImagesData) {
-            std::println("[ERROR]: Item {} could not be pushed because there are no images",
+            std::println("[ERROR]: Item {} could not be pushed because there "
+                         "are no images",
                          itemCab.ARTICULO);
             continue;
         }
 
         // Get media from cloudImages DB to check which images we have to upload
         auto &mediaMap = cloudImagesData.value();
-        // Set files vector to fill and send on the shopify request to upload item
+        // Set files vector to fill and send on the shopify request to upload
+        // item
         std::vector<UploadItemVariables::File> files;
 
         // Check if shopify already has images
@@ -196,15 +232,31 @@ PushController::pushItems(drogon::HttpRequestPtr req) {
         // Add created files to inputValue
         inputValues.files = std::move(files);
 
-        // ADD METAFIELDS!!!
 
         // This may get copy ellision with lucky!
-        auto [shopyResJson, shopyRes] = co_await m_client->graphql(
-            articleUploadQuery, uploadProductsVariables);
+        // UploadItem
+        auto [shopyRes, shopyResString] = co_await m_client->graphql<ProductSetResponse>(
+            articleUploadQuery, uploadProductsVariables); // This does deduction of course
+
+        // --- Upload metafields
+        // We need to do so with the just created or modified product id
+        // Metafields, we will use a different mutation to load metafields, so existing ones are not overwritten
+        std::string ns = m_client->getNameSpace(); // Get namepsace, this function creates a copy of the string
+        std::string id = shopyRes.data.productSet.product.id; // Get Product Id, no matter if it is the old one or a new one
+
+        // For the moment, we only have a metafield object for shoe_color_ranges_object
+        // This is stored in a map with lowerCase letters and values are ids we put to create metafields
+        auto shoeColorRangesMetaObjects = co_await m_client->getColorRangeObjects(); // Keys are lowercased, rojos, naranjas...
+
+        Metafields metafields{metafieldsUtils::createMetafieldsFromSAP(ns, itemCab, id, shoeColorRangesMetaObjects)};
+        auto [shopyResMetafields, shopyResMetafieldsString] = co_await m_client->graphql(
+            articleMetafieldsQuery, metafields);
+        // ---
+
 
         responseShopy->setContentTypeCode(
             drogon::ContentType::CT_APPLICATION_JSON);
-        responseShopy->setBody(std::move(shopyRes));
+        responseShopy->setBody(std::move(shopyResString));
         // REMOVE BREAK
         break;
     }
@@ -213,7 +265,7 @@ PushController::pushItems(drogon::HttpRequestPtr req) {
     // String! means that it is mandatory
 
     co_return responseShopy;
-    // --------- IMPORTANT build shopify query "bulkOperationRunMutation" to avoid rate LImits
-    // "productVariantsBulkCreate" send return response
+    // --------- IMPORTANT build shopify query "bulkOperationRunMutation" to
+    // avoid rate LImits "productVariantsBulkCreate" send return response
 }
 } // namespace sapify

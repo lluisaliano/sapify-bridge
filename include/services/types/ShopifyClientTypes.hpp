@@ -2,6 +2,7 @@
 
 #include <string>
 #include <vector>
+#include <optional>
 
 namespace sapify {
 // Fetch Product Data Response Type
@@ -27,9 +28,18 @@ struct FetchProductDataResponse {
                 };
 
                 struct Variants {
+                    struct SelectedOptions {
+                        std::string name{};
+                        std::string value{};
+                    };
+                    struct InventoryItem {
+                        std::string id{};
+                    };
                     struct VariantNode {
                         std::string id{};
                         std::string sku{};
+                        std::vector<SelectedOptions> selectedOptions{};
+                        std::vector<InventoryItem> inventoryItem{};
                     };
                     std::vector<VariantNode> nodes{};
                 };
@@ -58,4 +68,42 @@ struct ShopifyRequest {
 struct SearchQuery {
     std::string searchQuery;
 };
+
+// Metafields objects from metafield object definition query
+struct MetaobjectDefinitionResponse {
+    struct Data {
+        struct MetaobjectDefinition {
+            struct Metaobjects {
+                struct Node {
+                    std::string id;
+                    std::string handle;
+                    std::string displayName;
+                };
+
+                struct PageInfo {
+                    bool hasNextPage{};
+                    std::optional<std::string> endCursor;
+                };
+
+                std::vector<Node> nodes;
+                PageInfo pageInfo;
+            };
+
+            std::string type;
+            Metaobjects metaobjects;
+        };
+
+        std::optional<MetaobjectDefinition> metaobjectDefinition;
+    };
+
+    struct Error {
+        std::string message;
+    };
+
+    std::optional<Data> data;
+    std::optional<std::vector<Error>> errors;
+};
+
+
+
 } // namespace sapify

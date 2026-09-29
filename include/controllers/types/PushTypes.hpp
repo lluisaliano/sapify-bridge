@@ -32,6 +32,11 @@ struct ItemCab {
     std::optional<std::string> TACON;
     std::optional<std::string> PUNTA;
 
+    std::optional<std::string> COLORES; // Gama Color
+    std::optional<std::string> BOLSOS_EXTERIOR;
+    std::optional<std::string> BOLSOS_INTERIOR;
+    std::optional<std::string> BOLSOS_P_METALICA;
+
     std::uint16_t PVP; // PRECIO PVP, Takes price from precio_peninsula from
                        // supertcmodel view
     std::uint16_t PRECIO_UK;
@@ -52,17 +57,11 @@ using ItemsDet = std::vector<ItemDet>;
 
 // ------------- Upload Items Variables
 struct UploadItemVariables {
-    // --- Metafield ---
-    struct Metafield {
-        std::string ns; // mapeado a "namespace"
-        std::string key;
-        std::string value;
-        std::string type;
-    };
 
     // --- Media (imagen/video/etc.) ---
     // URL Base of Picutres
-    static inline std::string PICTURES_BASE_URL = "https://" + config.picturesBaseURL;
+    static inline std::string PICTURES_BASE_URL =
+        "https://" + config.picturesBaseURL;
     struct File {
         std::optional<std::string>
             id; // solo si ya existe y quieres renombrar/reemplazar por id
@@ -128,7 +127,6 @@ struct UploadItemVariables {
     std::optional<bool> redirectNewHandle; // true = redirige automáticamente el
                                            // handle viejo al nuevo
     Seo seo;
-    std::vector<Metafield> metafields;
     std::vector<File> files;
     std::vector<ProductOption> productOptions;
     std::vector<Variant> variants;
@@ -148,12 +146,50 @@ struct UploadItemsSetVariables {
     UploadItemVariables input; // Item
 };
 
+// -- Metafields Upload type for variables
+struct Metafield {
+    std::string ownerId; // Product ID o shopify
+    std::string ns;      // mapeado a "namespace"
+    std::string key;     // Key
+    std::string type;    // Type, single_line_text_field for example
+    std::string value;   // value
+};
+
+// This is the outter struct for metafields variables
+struct Metafields {
+    std::vector<Metafield> metafields;
+};
+
+// ProductSet Mutation Query Response
+struct ProductSetResponse {
+      struct Data {
+          struct ProductSet {
+              struct Product {
+                  std::string id{};
+              };
+
+              struct UserError {
+                  std::string message{};
+                  std::string code{};
+                  std::vector<std::string> field{};
+              };
+
+              Product product{};
+              std::vector<UserError> userErrors{};
+          };
+
+          ProductSet productSet{};
+      };
+
+      Data data{};
+  };
+
 } // namespace sapify
 
 // --- Tell Glaze how to deserialize things
 // Deserialize Metafield ns to namespace, as namespace is a reserved keyword
-template <> struct glz::meta<sapify::UploadItemVariables::Metafield> {
-    using T = sapify::UploadItemVariables::Metafield;
+template <> struct glz::meta<sapify::Metafield> {
+    using T = sapify::Metafield;
     static constexpr auto value =
         glz::object("namespace", &T::ns, "key", &T::key, "value", &T::value,
                     "type", &T::type);
