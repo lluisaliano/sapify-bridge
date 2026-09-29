@@ -25,14 +25,6 @@ struct MetafieldInfo {
         value;
 };
 
-struct Metafield {
-    std::string ownerId; // product id
-    std::string ns;      // namespace
-    std::string key;     // key
-    std::string type;    // value or gid if it is metaobject reference
-    std::string value;   // Metaobject reference or single_line_text_field
-};
-
 // Define metafields and how they are extracted
 // ------------ FALTARAN BOLSOS, PARTE METALICA, PUNTA...
 inline const std::vector<MetafieldInfo> metafields = {
@@ -174,14 +166,14 @@ inline const std::vector<MetafieldInfo> metafields = {
 inline std::vector<Metafield> createMetafieldsFromSAP(
     std::string_view ns, const ItemCab &itemCab,
     const std::string &shopifyProductId,
-    const std::unordered_map<std::string, std::string> &shoeColorRangeObjects) {
+    const shoeColorRangeObjects &colorRangeObjects) {
 
     std::vector<Metafield> metafieldsData;
 
     for (const auto &field : metafields) {
         // Define extra parameter for this function metaobject function
         std::optional<std::string> value;
-        value = field.value(itemCab, shoeColorRangeObjects);
+        value = field.value(itemCab, colorRangeObjects);
 
         if (!value || value->empty()) {
             continue;
