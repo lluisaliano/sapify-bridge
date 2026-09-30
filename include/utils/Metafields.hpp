@@ -126,7 +126,7 @@ inline const std::vector<MetafieldInfo> metafields = {
         "metaobject_reference",
         [](const ItemCab &itemCab,
            const shoeColorRangeObjects &objects) -> std::optional<std::string> {
-            if (auto it = objects.find(textUtils::toLower(itemCab.COLOR));
+            if (auto it = objects.find(textUtils::handleText(itemCab.COLORES.has_value() ? *itemCab.COLORES : ""));
                 it != objects.end()) {
                 // This does not set up any new MetaObject, they have to be
                 // already created on shopify
@@ -173,6 +173,7 @@ inline std::vector<Metafield> createMetafieldsFromSAP(
     for (const auto &field : metafields) {
         // Define extra parameter for this function metaobject function
         std::optional<std::string> value;
+
         value = field.value(itemCab, colorRangeObjects);
 
         if (!value || value->empty()) {

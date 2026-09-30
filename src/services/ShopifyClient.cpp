@@ -13,6 +13,7 @@
 #include <glaze/json.hpp>
 #include <glaze/json/generic_fwd.hpp>
 #include <glaze/json/write.hpp>
+#include <mutex>
 #include <print>
 #include <stdexcept>
 #include <string>
@@ -55,6 +56,8 @@ ShopifyClient::fetchProductData(const std::string_view product) {
 }
 
 drogon::Task<std::string> ShopifyClient::ensureAccessToken() {
+    // A class mutex to avoid multiple token request
+    std::lock_guard lock{m_tokenMutex};
     if (hasValidToken()) {
         co_return m_accessToken;
     }

@@ -135,7 +135,7 @@ PushController::pushItems(drogon::HttpRequestPtr req) {
 
         // Default upload of items set to Active
         using enum UploadItemVariables::ProductStatus;
-        inputValues.status = ACTIVE;
+        inputValues.status = DRAFT;
 
         // For each talla, create a variant, called productOption on shopify
 
@@ -219,14 +219,11 @@ PushController::pushItems(drogon::HttpRequestPtr req) {
         // item
         std::vector<UploadItemVariables::File> files;
 
-        // Check if shopify already has images
-        auto shopyImagesMap = getShopyIdFromMedia(itemShopy);
-
         // We assume that there are at least 3 images
         for (auto &[variant, exists] : mediaMap) {
             if (!exists)
                 continue;
-            addImages(files, shopyImagesMap, itemCab, variant);
+            addImages(files, itemCab, variant);
         }
 
         // Add created files to inputValue
@@ -248,7 +245,10 @@ PushController::pushItems(drogon::HttpRequestPtr req) {
         // This is stored in a map with lowerCase letters and values are ids we put to create metafields
         auto shoeColorRangesMetaObjects = co_await m_client->getColorRangeObjects(); // Keys are lowercased, rojos, naranjas...
 
-        Metafields metafields{metafieldsUtils::createMetafieldsFromSAP(ns, itemCab, id, shoeColorRangesMetaObjects)};
+        // Initialize metafields
+        Metafields metafields;
+        metafields.metafields = metafieldsUtils::createMetafieldsFromSAP(ns, itemCab, id, shoeColorRangesMetaObjects);
+        // Do the update
         auto [shopyResMetafields, shopyResMetafieldsString] = co_await m_client->graphql(
             articleMetafieldsQuery, metafields);
         // ---

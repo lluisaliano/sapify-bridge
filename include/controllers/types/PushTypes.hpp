@@ -47,10 +47,10 @@ using ItemsCab = std::vector<ItemCab>;
 
 // Items Det
 struct ItemDet {
+    long double STOCK; // This has to come as double or the json, conversion may fail, place it first as it is the bigger member
     std::string EAN;
     std::string ARTICULO;
     std::string TALLA;
-    std::uint32_t STOCK; // 32 bits is more than enough to represent max stock
 };
 
 using ItemsDet = std::vector<ItemDet>;
@@ -63,8 +63,6 @@ struct UploadItemVariables {
     static inline std::string PICTURES_BASE_URL =
         "https://" + config.picturesBaseURL;
     struct File {
-        std::optional<std::string>
-            id; // solo si ya existe y quieres renombrar/reemplazar por id
         std::string filename;
         std::string originalSource;
         std::string alt;
@@ -191,7 +189,7 @@ struct ProductSetResponse {
 template <> struct glz::meta<sapify::Metafield> {
     using T = sapify::Metafield;
     static constexpr auto value =
-        glz::object("namespace", &T::ns, "key", &T::key, "value", &T::value,
+        glz::object("ownerId", &T::ownerId, "namespace", &T::ns, "key", &T::key, "value", &T::value,
                     "type", &T::type);
 };
 

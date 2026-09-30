@@ -7,6 +7,7 @@
 #include <glaze/core/feature_test.hpp>
 #include <glaze/json.hpp>
 #include <glaze/json/generic_fwd.hpp>
+#include <print>
 #include <string>
 #include <string_view>
 #include <unordered_map>
@@ -46,6 +47,7 @@ class ShopifyClient {
     std::string m_apiVersion{};
     std::string m_accessToken{};
     std::chrono::steady_clock::time_point m_tokenExpiresAt;
+    std::mutex m_tokenMutex;
 
   private:
     // This function is for testing only
@@ -113,7 +115,7 @@ class ShopifyClient {
 
         /*
          * Adding comment on GLZ as this may be prone to error.
-         * By default, glz throws error on missing files on the struct when
+         * By default, glz throws error on missing fields on the struct when
          * parsing a json string But does not throw error and just default
          * initializes the fields when the json has less items than the struct
          * To control the behavior:
@@ -129,7 +131,7 @@ class ShopifyClient {
         // --- TODO This steap of parsing json here may be not needed, because
         // we could just return the json string We ignore error on unkown keys
         // to avoid the reading of extension field of shopify
-        if (auto ec = glz::read<glz::opts{.error_on_unknown_keys = false}>(
+        if (auto ec = glz::read<glz::opts{.error_on_unknown_keys = false, .error_on_missing_keys = false}>(
                 response, responseJson)) {
             throw std::runtime_error("Invalid JSON in Shopify response");
         }

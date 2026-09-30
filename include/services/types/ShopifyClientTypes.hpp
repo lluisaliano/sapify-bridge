@@ -39,7 +39,7 @@ struct FetchProductDataResponse {
                         std::string id{};
                         std::string sku{};
                         std::vector<SelectedOptions> selectedOptions{};
-                        std::vector<InventoryItem> inventoryItem{};
+                        InventoryItem inventoryItem{};
                     };
                     std::vector<VariantNode> nodes{};
                 };
