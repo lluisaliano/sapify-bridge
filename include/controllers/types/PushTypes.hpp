@@ -16,11 +16,12 @@ struct UploadItems {
 // Items Cab
 struct ItemCab {
     std::string ARTICULO;
-    std::string DESCRIPCION_CORTA;
-    std::string DESCRIPCION_LARGA;
+    std::optional<std::string> DESCRIPCION_CORTA; // Descriptions are optional
+    std::optional<std::string> DESCRIPCION_LARGA;
     std::string NOMBRE_HORMA;
     std::string COLOR;
     std::string FAMILIA;
+    std::string GENERO;
     std::string TEMPORADA;
     std::string TEMA;
     std::string MATERIAL;

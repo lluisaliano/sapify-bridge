@@ -1,5 +1,6 @@
 #pragma once
 
+#include "utils/UnorderedMapTransparency.hpp"
 #include <cassert>
 #include <chrono>
 #include <drogon/drogon.h>
@@ -15,7 +16,8 @@ namespace sapify {
 // In sabates order is: Pers Top Side Back Det
 // In bolsos order is: Side Pers Top Back Det Lat
 
-using ImageVariantMap = std::unordered_map<std::string, bool>;
+// Using heterogeneous lookup, std::equal_to already has is_transparent
+using ImageVariantMap = std::unordered_map<std::string, bool, StringHash, std::equal_to<>>;
 
 inline drogon::Task<std::optional<ImageVariantMap>>
 getCloudImagesData(std::string_view item) {

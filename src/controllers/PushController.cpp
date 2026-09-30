@@ -123,8 +123,10 @@ PushController::pushItems(drogon::HttpRequestPtr req) {
         // U_GSP_REFERENCE
         inputValues.productType = itemCab.ARTICULO;
 
-        // ---------------- AQUI HAY QUE PONER TAGS HTML PARA SEO
-        inputValues.descriptionHtml = itemCab.DESCRIPCION_LARGA;
+        // ---------------- AQUI HAY QUE PONER TAGS HTML PARA SEO (strong..)
+        inputValues.descriptionHtml = itemCab.DESCRIPCION_LARGA.value_or(
+            ""); // If it does not exist, send "" we could use std::optional,
+                 // but
         //-----------IMPORTANTE: Vendor depende de tienda
         inputValues.vendor = "Mascaro";
 
@@ -177,7 +179,8 @@ PushController::pushItems(drogon::HttpRequestPtr req) {
             // exist, this just gives a nullopt
             std::optional<std::string> id;
             if (itemExists) {
-                if (auto it = existingVariantsGidMap.find(normalizedTalla); it != existingVariantsGidMap.end()) {
+                if (auto it = existingVariantsGidMap.find(normalizedTalla);
+                    it != existingVariantsGidMap.end()) {
                     id = it->second;
                 }
             }
@@ -213,46 +216,71 @@ PushController::pushItems(drogon::HttpRequestPtr req) {
             continue;
         }
 
-        // Get media from cloudImages DB to check which images we have to upload
-        auto &mediaMap = cloudImagesData.value();
         // Set files vector to fill and send on the shopify request to upload
         // item
         std::vector<UploadItemVariables::File> files;
 
-        // We assume that there are at least 3 images
-        for (auto &[variant, exists] : mediaMap) {
-            if (!exists)
-                continue;
-            addImages(files, itemCab, variant);
+        // Define Image order
+        std::vector<std::string_view> imageOrder;
+
+        // Generos mapping
+        const std::string_view BOLSOS = "4";
+        const std::string_view ABRIGOS = "3";
+        const std::string_view CARTERAS = "8";
+
+        // Bolsos Order
+        if (itemCab.GENERO == BOLSOS || itemCab.GENERO == ABRIGOS ||
+            itemCab.GENERO == CARTERAS) {
+            imageOrder = {"side", "pers", "top", "back", "lateral", "det"};
+        } else {
+            // Normal Order
+            imageOrder = {"pers", "top", "side", "back", "det"};
+        }
+
+        // We assume that there are at least 3 images for the selected items, otherwise this will add no images
+        for (auto& name : imageOrder) {
+           auto it = (*cloudImagesData).find(name);
+           // If variant is found (which should always be true) and exists is true, we add it
+           if (it != (*cloudImagesData).end() && it->second) {
+               addImages(files, itemCab, it->first);
+           }
         }
 
         // Add created files to inputValue
         inputValues.files = std::move(files);
 
-
         // This may get copy ellision with lucky!
         // UploadItem
-        auto [shopyRes, shopyResString] = co_await m_client->graphql<ProductSetResponse>(
-            articleUploadQuery, uploadProductsVariables); // This does deduction of course
+        auto [shopyRes, shopyResString] =
+            co_await m_client->graphql<ProductSetResponse>(
+                articleUploadQuery,
+                uploadProductsVariables); // This does deduction of course
 
         // --- Upload metafields
         // We need to do so with the just created or modified product id
-        // Metafields, we will use a different mutation to load metafields, so existing ones are not overwritten
-        std::string ns = m_client->getNameSpace(); // Get namepsace, this function creates a copy of the string
-        std::string id = shopyRes.data.productSet.product.id; // Get Product Id, no matter if it is the old one or a new one
+        // Metafields, we will use a different mutation to load metafields, so
+        // existing ones are not overwritten
+        std::string ns =
+            m_client->getNameSpace(); // Get namepsace, this function creates a
+                                      // copy of the string
+        std::string id = shopyRes.data.productSet.product
+                             .id; // Get Product Id, no matter if it is the old
+                                  // one or a new one
 
-        // For the moment, we only have a metafield object for shoe_color_ranges_object
-        // This is stored in a map with lowerCase letters and values are ids we put to create metafields
-        auto shoeColorRangesMetaObjects = co_await m_client->getColorRangeObjects(); // Keys are lowercased, rojos, naranjas...
+        // For the moment, we only have a metafield object for
+        // shoe_color_ranges_object This is stored in a map with lowerCase
+        // letters and values are ids we put to create metafields
+        auto shoeColorRangesMetaObjects =
+            co_await m_client->getColorRangeObjects(); // Keys are lowercased,
+                                                       // rojos, naranjas...
 
         // Initialize metafields
-        Metafields metafields;
-        metafields.metafields = metafieldsUtils::createMetafieldsFromSAP(ns, itemCab, id, shoeColorRangesMetaObjects);
+        Metafields metafields{metafieldsUtils::createMetafieldsFromSAP(
+            ns, itemCab, id, shoeColorRangesMetaObjects)};
         // Do the update
-        auto [shopyResMetafields, shopyResMetafieldsString] = co_await m_client->graphql(
-            articleMetafieldsQuery, metafields);
+        auto [shopyResMetafields, shopyResMetafieldsString] =
+            co_await m_client->graphql(articleMetafieldsQuery, metafields);
         // ---
-
 
         responseShopy->setContentTypeCode(
             drogon::ContentType::CT_APPLICATION_JSON);
