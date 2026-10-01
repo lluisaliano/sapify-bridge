@@ -72,6 +72,7 @@ constexpr std::string_view articleMetafieldsQuery = R"(
           value
           type
         }
+        userErrors { field message code }
       }
     }
 )";
