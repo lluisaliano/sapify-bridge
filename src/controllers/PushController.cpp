@@ -105,19 +105,15 @@ PushController::pushItems(drogon::HttpRequestPtr req) {
 
     // For each item
     for (auto &itemCab : cab) {
-        UploadItemsSetVariables uploadProductsVariables{};
-        try {
-            // Get Product mapping
-            uploadProductsVariables = co_await productSet::getProductSet(
-                *m_client, itemCab, shoeColorRangesMetaObjects, detMap);
-            // -------- IMPORTANT TODO: We have to change this to avoid using errors
-            // with a std::unexcpeted
-        } catch (const productSet::SkipProductSet &) {
+        // Get Product mapping, pass shopifyClient as referece
+        auto productSet = co_await productSet::getProductSet(
+            *m_client, itemCab, shoeColorRangesMetaObjects, detMap);
+        if (!productSet) {
             continue;
         }
+        auto uploadProductsVariables = std::move(productSet.value());
 
-        // This may get copy ellision with lucky!
-        // UploadItem
+        // UploadItem -> This return gets copy ellision
         auto [shopyRes, shopyResString] =
             co_await m_client->graphql<ProductSetResponse>(
                 articleUploadQuery,

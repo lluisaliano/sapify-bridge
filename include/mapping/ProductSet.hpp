@@ -5,15 +5,24 @@
 #include "utils/Metafields.hpp"
 
 #include <drogon/utils/coroutine.h>
+#include <expected>
 #include <unordered_map>
 
-// IMPORTANT! Mapping of product sap to avoid loading logic on PushController.cpp
-//  ALSO: Add userErrors {code, field, message} to shopify responses
+// Mapping of SAP Product to Shopify
 namespace sapify::productSet {
 
-class SkipProductSet {};
+//  ALSO: Add userErrors {code, field, message} to shopify responses
+// Define Errors here of mutation
+enum class ProductSetError {
+    Continue,
+};
 
-drogon::Task<UploadItemsSetVariables> getProductSet(
+// Result Type
+using ProductSetResult =
+    std::expected<UploadItemsSetVariables, ProductSetError>;
+
+// Mapping Function
+drogon::Task<ProductSetResult> getProductSet(
     ShopifyClient &shopifyClient, ItemCab &itemCab,
     const metafieldsUtils::shoeColorRangeObjects &shoeColorRangesMetaObjects,
     const std::unordered_map<std::string, ItemsDet> &detMap);

@@ -14,7 +14,7 @@
 
 namespace sapify::productSet {
 
-drogon::Task<UploadItemsSetVariables> getProductSet(
+drogon::Task<ProductSetResult> getProductSet(
     ShopifyClient &shopifyClient, ItemCab &itemCab,
     const metafieldsUtils::shoeColorRangeObjects &,
     const std::unordered_map<std::string, ItemsDet> &detMap) {
@@ -91,7 +91,7 @@ drogon::Task<UploadItemsSetVariables> getProductSet(
     auto itDet = detMap.find(itemCab.ARTICULO);
     if (itDet == detMap.end()) {
         std::println("[ERROR]: Item  has no tallas", itemCab.ARTICULO);
-        throw SkipProductSet{};
+        co_return std::unexpected{ProductSetError::Continue};
     }
     // Loop through each talla coming from itemDet, itemDet come from ean,
     // where empty eans are not returned If new eans are added, we just
@@ -151,7 +151,7 @@ drogon::Task<UploadItemsSetVariables> getProductSet(
         std::println("[ERROR]: Item {} could not be pushed because there "
                      "are no images",
                      itemCab.ARTICULO);
-        throw SkipProductSet{};
+        co_return std::unexpected{ProductSetError::Continue};
     }
 
     // Set files vector to fill and send on the shopify request to upload
