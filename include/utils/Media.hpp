@@ -23,16 +23,16 @@ inline void addImages(std::vector<UploadItemVariables::File> &files,
     //     std::nullopt;
 
     // Create image URL
-    std::string source = std::format(
-        "{}/{}/{}_{}.jpg/products", UploadItemVariables::PICTURES_BASE_URL,
-        itemCab.ARTICULO, itemCab.ARTICULO, variant);
+    std::string source =
+        std::format("{}/{}/{}_{}.jpg", UploadItemVariables::PICTURES_BASE_URL,
+                    itemCab.ARTICULO, itemCab.ARTICULO, variant);
     // ---------------- ADD ALT!!
     // Add it to files
-    files.push_back(
-        {.filename = std::format("{}_{}", itemCab.ARTICULO, variant),
-         .originalSource = std::move(source),
-         .alt = "",
-         .contentType = "IMAGE",
-         .duplicateResolutionMode = "REPLACE"});
+    files.push_back({
+        .filename = std::format("{}_{}.jpg", itemCab.ARTICULO, variant), // Important, keep .jpg or this fail! Change name for SEO porpuses
+        .originalSource = std::move(source),
+        .alt = "",
+        .contentType = "IMAGE",
+    });
 }
 } // namespace sapify

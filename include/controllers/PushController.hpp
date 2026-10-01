@@ -24,23 +24,18 @@ class PushController : public drogon::HttpController<PushController, false> {
     // Push items
     ADD_METHOD_TO(PushController::pushItems, "/upload/items", drogon::Post);
 
-    // // Push prices
-    // ADD_METHOD_TO(PushController::pushPrices, "/upload/prices",
-    // drogon::Post);
-
     // // Push stock
-    // ADD_METHOD_TO(PushController::pushStock, "/uploaad/stocks",
-    // drogon::Post);
+    ADD_METHOD_TO(PushController::pushStock, "/upload/stocks", drogon::Post);
 
     METHOD_LIST_END
 
+  private:
+    // Shopify Client
+    std::shared_ptr<ShopifyClient> m_client;
+
+    // Methods
     drogon::Task<drogon::HttpResponsePtr> pushItems(drogon::HttpRequestPtr);
 
-    // drogon::Task<drogon::HttpResponsePtr> pushPrices(drogon::HttpRequestPtr);
-
-    // drogon::Task<drogon::HttpResponsePtr> pushStock(drogon::HttpRequestPtr);
-
-  private:
-    std::shared_ptr<ShopifyClient> m_client;
+    drogon::Task<drogon::HttpResponsePtr> pushStock(drogon::HttpRequestPtr);
 };
 } // namespace sapify

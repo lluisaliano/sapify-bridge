@@ -17,6 +17,7 @@ add_executable(sapify-bridge
   src/main.cpp
   src/config/Config.cpp
   src/controllers/PushController.cpp
+  src/mapping/ProductSet.cpp
   src/services/ShopifyClient.cpp
 )
 

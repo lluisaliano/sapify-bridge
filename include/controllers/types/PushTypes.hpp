@@ -69,7 +69,7 @@ struct UploadItemVariables {
         std::string alt;
         std::string contentType; // "IMAGE" | "VIDEO" | "EXTERNAL_VIDEO" |
                                  // "MODEL_3D" | "FILE"
-        std::string duplicateResolutionMode; // "REPLACE" | "APPEND_UUID" |
+        // std::string duplicateResolutionMode; // "REPLACE" | "APPEND_UUID" | Not needed
                                              // "RAISE_ERROR"
     };
 
@@ -183,6 +183,29 @@ struct ProductSetResponse {
       Data data{};
   };
 
+// ------------- Stocks
+struct ItemStock {
+    std::int64_t STOCK{0}; // Set to 0 by default
+    std::string ARTICULO;
+    std::string SKU;
+    std::string ALMACEN;
+};
+
+using ItemsStock = std::vector<ItemStock>;
+/*  This contains something like this. Where each entry for SKU and ALMACEN is repeated
+ *  {
+        "ARTICULO": "SAMI_A",
+        "SKU": "SAMI_A_50",
+        "STOCK": 1,
+        "ALMACEN": "ES001"
+    },
+    {
+        "ARTICULO": "SAMI_A",
+        "SKU": "SAMI_A_52",
+        "STOCK": 1,
+        "ALMACEN": "ES001"
+    },
+ */
 } // namespace sapify
 
 // --- Tell Glaze how to deserialize things

@@ -10,6 +10,17 @@
             "passwd": "Mascaro1918",
             "is_fast": true,
             "connection_number": 1
+        },
+        {
+            "name": "sapify-mascaro",
+            "rdbms": "postgresql",
+            "host": "192.168.1.99",
+            "port": 5432,
+            "dbname": "sapify-mascaro",
+            "user": "Mascaro",
+            "passwd": "Mascaro1918",
+            "is_fast": true,
+            "connection_number": 1
         }
     ]
 }
